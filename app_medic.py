@@ -184,6 +184,25 @@ def conectar():
         return None
 
 # --- VERIFICACIÓN SEGURA DE COLUMNAS ---
+def run_query(query, params=None, fetch=True):
+    try:
+        connection = init_connection()
+        with connection.cursor() as cursor:
+            cursor.execute(query, params or ())
+            if fetch:
+                result = cursor.fetchall()
+                connection.close()
+                return result
+            else:
+                connection.commit()
+                last_id = cursor.lastrowid
+                connection.close()
+                return last_id
+    except Exception as e:
+        st.error(f"Error en la base de datos: {e}")
+        return None
+
+# --- VERIFICACIÓN SEGURA DE COLUMNAS ---
 def asegurar_columnas_sistema():
     try:
         query_check = """
