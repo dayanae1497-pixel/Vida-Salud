@@ -166,15 +166,22 @@ def render_header(subtitulo="Portal de Acceso Restringido"):
     """, unsafe_allow_html=True)
 
 # --- CONEXIÓN A LA BASE DE DATOS MYSQL ---
-def init_connection():
-    return pymysql.connect(
-        host="mysql-68077f9-viacrucis2026.d.aivencloud.com",
-        user="avnadmin",
-        password="AVNS_ytphqSAjobNIHWjlbex",
-        database="sistema_medico_db",
-        port=18358,  
-        ssl=REQUIRED 
-    )
+def conectar():
+    try:
+        password_db = st.secrets.get("password", "AVNS_ytphqSAjobNIHWjlbex")
+        conn = mysql.connector.connect(
+            host="mysql-68077f9-viacrucis2026.d.aivencloud.com",
+            user="avnadmin",
+            password=password_db,
+            port=18358,
+            database="sistema_medico_db",
+            connect_timeout=3  # Timeout corto para activar contingencia rápido si no hay red
+        )
+        st.session_state['modo_offline'] = False
+        return conn
+    except Exception:
+        st.session_state['modo_offline'] = True
+        return None
 
 def run_query(query, params=None, fetch=True):
     try:
