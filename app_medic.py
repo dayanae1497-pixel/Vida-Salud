@@ -170,9 +170,10 @@ def init_connection():
     return pymysql.connect(
         host="mysql-68077f9-viacrucis2026.d.aivencloud.com",
         user="avnadmin",
-        password="AVNS_ytphqSAjobNIHWjlbex",
+        password="AVNS_ytphqSAjobNIWjIbex",
         database="sistema_medico_db",
-        cursorclass=pymysql.cursors.DictCursor
+        port=18358,  
+        ssl={"ssl": {}} 
     )
 
 def run_query(query, params=None, fetch=True):
