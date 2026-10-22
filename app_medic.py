@@ -173,7 +173,7 @@ def init_connection():
         password="AVNS_ytphqSAjobNIHWjlbex",
         database="sistema_medico_db",
         port=18358,  
-        ssl={"ssl": {}} 
+        ssl=REQUIRED 
     )
 
 def run_query(query, params=None, fetch=True):
