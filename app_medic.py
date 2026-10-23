@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pymysql
 import pandas as pd
@@ -792,7 +791,9 @@ if not st.session_state.logged_in:
             <div style="background-color: #FFFFFF; border: 3px solid #2D8A5E; border-radius: 20px; padding: 25px 30px; box-shadow: 0px 8px 20px rgba(0,0,0,0.1); margin-top: 10px;">
                 <h2 style="color: #15432A; text-align: center; margin-top: 0; font-weight: 800; font-size: 24px;">Credenciales de Acceso</h2>
             </div>
-        """, unsafe_allow_html=True)
+        """,
+        unsafe_allow_html=True
+        )
         
         with st.form("login_form"):
             st.markdown("<p style='color: #15432A; font-weight: bold; margin-bottom: 2px;'>Usuario</p>", unsafe_allow_html=True)
