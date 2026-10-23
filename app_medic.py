@@ -456,16 +456,18 @@ if selected_menu == "🏠 Inicio":
             df_med.columns = ['Nombre', 'Apellido', 'Especialidad']
             st.dataframe(df_med, use_container_width=True)
             
-    with tab_h:
+        with tab_h:
         medicos_list_h = run_query("SELECT id_medico, CONCAT(nombre, ' ', apellido) as medico FROM medicos")
         if medicos_list_h:
             medico_dict_h = {m['medico']: m['id_medico'] for m in medicos_list_h}
             medico_seleccionado = st.selectbox(
-                            medico_seleccionado = st.selectbox(
                 "Seleccione un Médico para ver sus horarios disponibles:", 
                 options=list(medico_dict_h.keys()), 
                 key="filtro_medico_horario"
             )
+            
+            id_med_seleccionado = medico_dict_h[medico_seleccionado]
+
 
     
     resumen_data = [
