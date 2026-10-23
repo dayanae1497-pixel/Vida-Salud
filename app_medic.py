@@ -529,7 +529,7 @@ def generar_pdf_reporte(titulo, df):
     elements.append(table)
     doc.build(elements)
     buffer.seek(0)
-        return buffer
+    return buffer
 
 def actualizar_tasa_bcv_automatico():
     hoy = date.today()
