@@ -131,7 +131,7 @@ button[data-testid="baseButton-header"] {
 # --- INYECCIÓN DE ESTILOS CSS GLOBALES MEJORADOS ---
 def aplicar_estilos_maqueta():
     bg_style = f"""
-        background: linear-gradient(rgba(242, 249, 245, 0.85), rgba(242, 249, 245, 0.85)),
+    background: linear-gradient(rgba(242, 249, 245, 0.85), rgba(242, 249, 245, 0.85)),
                     url("data:image/jpeg;base64,{b64_fondo}");
         background-size: cover;
         background-attachment: fixed;
