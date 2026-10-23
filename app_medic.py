@@ -165,25 +165,25 @@ def render_header(subtitulo="Portal de Acceso Restringido"):
         </div>
     """, unsafe_allow_html=True)
 
-# --- CONEXIÓN A LA BASE DE DATOS MYSQL ---
-def init_connection():
-    return pymysql.connect
-    password_db = st.secrets.get("password", "AVNS_ytphqSAjobNIHWjlbex")
-    conn = mysql.connector.connect(
-    host="mysql-68077f9-viacrucis2026.d.aivencloud.com",
-    user="avnadmin",
-    password=password_db,
-    port=18358,
-    database="sistema_medico_db",
-    connect_timeout=3  # Timeout corto para activar contingencia rápido si no hay red
-    )
-    st.session_state['modo_offline'] = False
-    return conn
-    except Exception:
-    st.session_state['modo_offline'] = True
-    return None
+import ssl
 
-# --- VERIFICACIÓN SEGURA DE COLUMNAS ---
+# --- CONEXIÓN A LA BASE DE DATOS MYSQL EN AIVEN ---
+def init_connection():
+    # Configuración de contexto SSL requerido por Aiven
+    context = ssl.create_default_context()
+    context.check_hostname = False
+    context.verify_mode = ssl.CERT_NONE  # O puedes cargar tu certificado CA si lo deseas
+
+    return pymysql.connect(
+        host="mysql-68077f9-viacrucis2026.d.aivencloud.com",
+        user="avnadmin",
+        password="AVNS_ytphqSAjobNIHWjlbex",
+        database="sistema_medico_db",
+        port=18358,
+        cursorclass=pymysql.cursors.DictCursor,
+        ssl=context
+    )
+
 def run_query(query, params=None, fetch=True):
     try:
         connection = init_connection()
@@ -199,8 +199,9 @@ def run_query(query, params=None, fetch=True):
                 connection.close()
                 return last_id
     except Exception as e:
-        st.error(f"Error en la base de datos: {e}")
+        st.error(f"Error en la base de datos remota: {e}")
         return None
+
 
 # --- VERIFICACIÓN SEGURA DE COLUMNAS ---
 def asegurar_columnas_sistema():
