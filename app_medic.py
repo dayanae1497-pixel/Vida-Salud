@@ -834,11 +834,9 @@ menu_options.append("🔒 Cerrar Sesión")
 selected_menu = st.sidebar.radio("Navegación", menu_options, key="nav_menu_radio", label_visibility="collapsed")
 
 if b64_mascota:
-    st.sidebar.markdown(f"""
-        <div style="text-align: center; margin-top: 30px;">
-            <img src="data:image/png;base64,{b64_mascota}" style="width: 140px; height: auto;">
-        </div>
-    """, unsafe_allow_html=True)
+    st.sidebar.markdown("<div style='text-align: center; margin-top: 30px;'>", unsafe_allow_html=True)
+    st.sidebar.image(f"data:image/png;base64,{b64_mascota}", width=140)
+    st.sidebar.markdown("</div>", unsafe_allow_html=True)
 
 if st.session_state.get("force_nav"):
     selected_menu = st.session_state.force_nav
