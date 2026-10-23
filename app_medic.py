@@ -39,108 +39,15 @@ b64_logo = obtener_base64(PATH_LOGO)
 b64_mascota = obtener_base64(PATH_MASCOTA)
 
 # --- INYECCIÓN DE ESTILOS CSS GLOBALES MEJORADOS ---
-def aplicar_estilos_maqueta():
-    bg_style = f"""
-        background: linear-gradient(rgba(242, 249, 245, 0.85), rgba(242, 249, 245, 0.85)),
-                    url("data:image/jpeg;base64,{b64_fondo}");
-        background-size: cover;
-        background-attachment: fixed;
-        background-position: center;
-    """ if b64_fondo else "background-color: #F2F9F5;"
-
-    css = f"""
-    <style>
-    /* Ocultar menú y footer, pero DEJAR VISIBLE la flechita del sidebar */
-#MainMenu, footer { visibility: hidden; }
-
-/* Hacer visible el botón de abrir sidebar en móviles */
-header[data-testid="stHeader"] {
-    background: transparent !important;
-    z-index: 99999 !important;
-}
-
-button[data-testid="stHeaderNavStateButton"], 
-button[data-testid="baseButton-header"] {
-    visibility: visible !important;
-    display: block !important;
-    color: #15432A !important;
-    background-color: #72C79B !important;
-    border-radius: 50% !important;
-}
-
-    
-    .stApp {{
-        {bg_style}
-        color: #15432A !important;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }}
-
-    section[data-testid="stSidebar"] {{
-        background-color: #2D8A5E !important;
-        width: 280px !important;
-    }}
-    
-    section[data-testid="stSidebar"] * {{
-        color: #FFFFFF !important;
-    }}
-
-    section[data-testid="stSidebar"] .stRadio div[role="radiogroup"] label {{
-        background-color: transparent !important;
-        padding: 8px 12px !important;
-        border-radius: 8px !important;
-        margin-bottom: 4px !important;
-    }}
-
-    section[data-testid="stSidebar"] .stRadio div[role="radiogroup"] label:hover {{
-        background-color: rgba(255, 255, 255, 0.15) !important;
-    }}
-
-    .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"], .stNumberInput input {{
-        background-color: #72C79B !important;
-        color: #0D2B1B !important;
-        border-radius: 25px !important;
-        border: 2px solid #2D8A5E !important;
-        font-weight: 800 !important;
-        font-size: 16px !important;
-        padding: 10px 18px !important;
-    }}
-
-    .stTextInput input::placeholder {{
-        color: #0D2B1B !important;
-        opacity: 0.8;
-    }}
-
-    .stButton>button, div[data-testid="stFormSubmitButton"]>button {{
-        background-color: #2D8A5E !important;
-        color: #FFFFFF !important;
-        border-radius: 25px !important;
-        font-weight: 800 !important;
-        font-size: 17px !important;
-        border: none !important;
-        padding: 12px 28px !important;
-        width: 100% !important;
-        text-transform: uppercase !important;
-        letter-spacing: 0.5px !important;
-        box-shadow: 0px 4px 10px rgba(0,0,0,0.15) !important;
-    }}
-
-    .stButton>button:hover, div[data-testid="stFormSubmitButton"]>button:hover {{
-        background-color: #15432A !important;
-        color: #FFFFFF !important;
-    }}
 # --- INYECCIÓN DE ESTILOS CSS GLOBALES MEJORADOS ---
 def aplicar_estilos_maqueta():
-    bg_style = f"""
-    background: linear-gradient(rgba(242, 249, 245, 0.85), rgba(242, 249, 245, 0.85)),
-                    url("data:image/jpeg;base64,{b64_fondo}");
-        background-size: cover;
-        background-attachment: fixed;
-        background-position: center;
-    """ if b64_fondo else "background-color: #F2F9F5;"
+    if b64_fondo:
+        bg_style = f'background: linear-gradient(rgba(242, 249, 245, 0.85), rgba(242, 249, 245, 0.85)), url("data:image/jpeg;base64,{b64_fondo}"); background-size: cover; background-attachment: fixed; background-position: center;'
+    else:
+        bg_style = 'background-color: #F2F9F5;'
 
     css = f"""
     <style>
-    /* Ocultar menú y footer, pero dejar visible la cabecera */
     #MainMenu, footer {{ visibility: hidden; }}
     
     .stApp {{
