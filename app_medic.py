@@ -326,17 +326,18 @@ def actualizar_tasa_bcv_automatico():
         else:
             tasa_valor = 881.876
 
-    query_insert_tasa = """
-        INSERT INTO tasa_cambio (fecha, tasa_usd_ves, fuente) 
-        VALUES (%s, %s, 'BCV') 
-        ON DUPLICATE KEY UPDATE tasa_usd_ves = VALUES(tasa_usd_ves)
-    """
+    query_insert_tasa = (
+        "INSERT INTO tasa_cambio (fecha, tasa_usd_ves, fuente) "
+        "VALUES (%s, %s, 'BCV') "
+        "ON DUPLICATE KEY UPDATE tasa_usd_ves = VALUES(tasa_usd_ves)"
+    )
     run_query(query_insert_tasa, (hoy, tasa_valor), fetch=False)
     
     res = run_query("SELECT id_tasa FROM tasa_cambio WHERE fecha = %s", (hoy,))
     if res:
         return res[0]['id_tasa'], tasa_valor
     return 1, tasa_valor
+
 
 # --- INICIALIZACIÓN DE SESIÓN ---
 if "logged_in" not in st.session_state:
