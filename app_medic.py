@@ -180,8 +180,8 @@ def init_connection():
     st.session_state['modo_offline'] = False
     return conn
     except Exception:
-        st.session_state['modo_offline'] = True
-        return None
+    st.session_state['modo_offline'] = True
+    return None
 
 # --- VERIFICACIÓN SEGURA DE COLUMNAS ---
 def run_query(query, params=None, fetch=True):
