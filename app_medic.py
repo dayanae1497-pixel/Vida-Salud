@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pymysql
 import pandas as pd
@@ -38,7 +37,6 @@ b64_fondo = obtener_base64(PATH_FONDO)
 b64_logo = obtener_base64(PATH_LOGO)
 b64_mascota = obtener_base64(PATH_MASCOTA)
 
-# --- INYECCIÓN DE ESTILOS CSS GLOBALES MEJORADOS ---
 # --- INYECCIÓN DE ESTILOS CSS GLOBALES MEJORADOS ---
 def aplicar_estilos_maqueta():
     if b64_fondo:
@@ -146,7 +144,6 @@ def aplicar_estilos_maqueta():
 
 aplicar_estilos_maqueta()
 
-
 def render_header(subtitulo="Portal de Acceso Restringido"):
     logo_html = f'<img src="data:image/jpeg;base64,{b64_logo}" style="height: 90px; margin-bottom: 5px;">' if b64_logo else '<h1 style="color:#15432A; margin:0;">💊 VIDACLINIC</h1>'
     
@@ -245,6 +242,223 @@ def generar_pdf_auditoria_master(df_citas, df_dividendos, df_infraestructura, to
     resumen_data = [
         [Paragraph("Concepto / Moneda", header_style), Paragraph("Total USD", header_style), Paragraph("Total COP", header_style), Paragraph("Total VES", header_style)],
         [Paragraph("Balance Real Caja", cell_style), Paragraph(f"${totales_dict['usd']:,.2f}", cell_style), Paragraph(f"${totales_dict['cop']:,.2f}", cell_style), Paragraph(f"Bs. {totales_dict['ves']:,.2f}", cell_style)],
+        [Paragraph("Ingresos Clínica (Consultorios + Equipos)", cell_style), Paragraph(f"${totales_dict['clinica_usd']:,.2f}", cell_style), Paragraph(f"${totales_dict['clinica_cop']:,.2f}", cell_style), Paragraph("-", cell_style)],
+        [Paragraph("Honorarios Médicos", cell_style), Paragraph(f"${totales_dict['medicos_usd']:,.2f}", cell_style), Paragraph(f"${totales_dict['medicos_cop']:,.2f}", cell_style), Paragraph("-", cell_style)]
+    ]
+    t_resumen = Table(resumen_data, colWidths=[220, 180, 180, 182])
+    t_resumen.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1A5235')),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#2D8A5E')),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#F2F9F5')),
+    ]))
+    elements.append(t_resumen)
+    elements.append(Spacer(1, 6))
+
+    if not df_infraestructura.empty:
+        headers_inf = [Paragraph(str(col), header_style) for col in df_infraestructura.columns.tolist()]
+        data_inf = [headers_inf]
+        for row in df_infraestructura.astype(str).values.tolist():
+            data_inf.append([Paragraph(cell, cell_style) for cell in row])
+        t_inf = Table(data_inf, colWidths=[762 / len(df_infraestructura.columns)] * len(df_infraestructura.columns))
+        t_inf.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1A5235')),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#2D8A5E')),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#F2F9F5')),
+        ]))
+        elements.append(t_inf)
+
+    doc.build(elements)
+    buffer.seek(0)
+    return buffer
+
+def generar_pdf_reporte(titulo, df):
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=landscape(letter), rightMargin=15, leftMargin=15, topMargin=20, bottomMargin=20)
+    elements = []
+    
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle('TitleStyle', parent=styles['Heading1'], fontSize=12, textColor=colors.HexColor('#15432A'), spaceAfter=8)
+    cell_style = ParagraphStyle('CellStyle', parent=styles['Normal'], fontSize=6.5, leading=8, textColor=colors.HexColor('#1F2926'), alignment=1)
+    header_style = ParagraphStyle('HeaderStyle', parent=styles['Normal'], fontSize=7, leading=9, textColor=colors.whitesmoke, fontName='Helvetica-Bold', alignment=1)
+    
+    elements.append(Paragraph(f"FARMAVIDA - {titulo}", title_style))
+    elements.append(Spacer(1, 5))
+    
+    headers = [Paragraph(str(col), header_style) for col in df.columns.tolist()]
+    data = [headers]
+    for row in df.astype(str).values.tolist():
+        data.append([Paragraph(cell, cell_style) for cell in row])
+    
+    table = Table(data, colWidths=[762 / len(df.columns)] * len(df.columns))
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1A5235')),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#F2F9F5')),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#2D8A5E')),
+    ]))
+    
+    elements.append(table)
+    doc.build(elements)
+    buffer.seek(0)
+    return buffer
+
+def actualizar_tasa_bcv_automatico():
+    hoy = date.today()
+    tasa_hoy = run_query("SELECT * FROM tasa_cambio WHERE fecha = %s", (hoy,))
+    if tasa_hoy:
+        return tasa_hoy[0]['id_tasa'], float(tasa_hoy[0]['tasa_usd_ves'])
+    
+    tasa_valor = None
+    try:
+        url = "https://ve.dolarapi.com/v1/dolares/oficial"
+        response = requests.get(url, timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            tasa_valor = float(data['price'])
+    except Exception:
+        pass
+
+    if not tasa_valor:
+        ultima_tasa = run_query("SELECT tasa_usd_ves FROM tasa_cambio ORDER BY fecha DESC LIMIT 1")
+        if ultima_tasa:
+            tasa_valor = float(ultima_tasa[0]['tasa_usd_ves'])
+        else:
+            tasa_valor = 881.876
+
+    query_insert_tasa = """
+        INSERT INTO tasa_cambio (fecha, tasa_usd_ves, fuente) 
+        VALUES (%s, %s, 'BCV') 
+        ON DUPLICATE KEY UPDATE tasa_usd_ves = VALUES(tasa_usd_ves)
+    """
+    run_query(query_insert_tasa, (hoy, tasa_valor), fetch=False)
+    
+    res = run_query("SELECT id_tasa FROM tasa_cambio WHERE fecha = %s", (hoy,))
+    if res:
+        return res[0]['id_tasa'], tasa_valor
+    return 1, tasa_valor
+
+# --- INICIALIZACIÓN DE SESIÓN ---
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+    st.session_state.user = None
+    st.session_state.role = None
+
+if "nav_menu" not in st.session_state:
+    st.session_state.nav_menu = "🏠 Inicio (Portal Principal)"
+
+# ==========================================
+# 1. PANTALLA DE LOGIN
+# ==========================================
+if not st.session_state.logged_in:
+    render_header("Portal de Acceso Restringido")
+
+    col1, col2, col3 = st.columns([1, 1.3, 1])
+    with col2:
+        st.markdown("""
+            <div style="background-color: #FFFFFF; border: 3px solid #2D8A5E; border-radius: 20px; padding: 25px 30px; box-shadow: 0px 8px 20px rgba(0,0,0,0.1); margin-top: 10px;">
+                <h2 style="color: #15432A; text-align: center; margin-top: 0; font-weight: 800; font-size: 24px;">Credenciales de Acceso</h2>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        with st.form("login_form"):
+            st.markdown("<p style='color: #15432A; font-weight: bold; margin-bottom: 2px;'>Usuario</p>", unsafe_allow_html=True)
+            username = st.text_input("Usuario", placeholder="", label_visibility="collapsed")
+            
+            st.markdown("<p style='color: #15432A; font-weight: bold; margin-bottom: 2px; margin-top: 10px;'>Contraseña</p>", unsafe_allow_html=True)
+            password = st.text_input("Contraseña", type="password", placeholder="", label_visibility="collapsed")
+            
+            st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
+            submit_login = st.form_submit_button("INGRESAR AL SISTEMA", use_container_width=True)
+            
+            if submit_login:
+                query = """
+                    SELECT u.*, r.descripcion as rol_nombre 
+                    FROM usuario u 
+                    JOIN rol r ON u.id_rol = r.id_rol 
+                    WHERE u.nombre_usuario = %s AND u.clave = %s
+                """
+                user_record = run_query(query, (username, password))
+                if user_record:
+                    st.session_state.logged_in = True
+                    st.session_state.user = user_record[0]['nombre_usuario']
+                    st.session_state.role = user_record[0]['rol_nombre']
+                    st.rerun()
+                else:
+                    st.error("Credenciales incorrectas. Verifica tus datos.")
+        st.stop()
+
+# ==========================================
+# 2. PANEL PRINCIPAL Y BARRA LATERAL
+# ==========================================
+st.sidebar.markdown(f"""
+    <div style="margin-bottom: 15px;">
+        <h3 style="margin:0; font-size: 22px; font-weight: 800;">👤 {st.session_state.user}</h3>
+        <p style="margin:2px 0 0 0; color: #80D8B6 !important; font-weight: bold;">Rol: {st.session_state.role}</p>
+    </div>
+    <hr style="border: 1px solid #72C79B; margin-bottom: 15px;">
+    <p style="font-weight: 800; font-size: 18px; margin-bottom: 10px;">Navegación:</p>
+""", unsafe_allow_html=True)
+
+menu_options = ["🏠 Inicio", "📋 Agendar Cita", "📅 Citas Agendadas", "📜 Historial de Citas"]
+if st.session_state.role == 'Administrativo':
+    menu_options.append("📊 Panel Administrativo")
+    menu_options.append("💰 Pago a Médicos")
+
+menu_options.append("🔒 Cerrar Sesión")
+
+selected_menu = st.sidebar.radio("Navegación", menu_options, key="nav_menu_radio", label_visibility="collapsed")
+
+if b64_mascota:
+    st.sidebar.markdown(f"""
+        <div style="text-align: center; margin-top: 30px;">
+            <img src="data:image/png;base64,{b64_mascota}" style="width: 140px; height: auto;">
+        </div>
+    """, unsafe_allow_html=True)
+
+if st.session_state.get("force_nav"):
+    selected_menu = st.session_state.force_nav
+    st.session_state.force_nav = None
+
+if selected_menu == "🔒 Cerrar Sesión":
+    st.session_state.logged_in = False
+    st.session_state.user = None
+    st.session_state.role = None
+    st.rerun()
+
+render_header("Sistema Unificado de Gestión Médica y Control Financiero.")
+
+# ------------------------------------------
+# MÓDULO 1: INICIO
+# ------------------------------------------
+if selected_menu == "🏠 Inicio":
+    st.markdown("<h1 style='color: #15432A; font-size: 36px; font-weight: 900; margin-bottom: 15px;'>Información General:</h1>", unsafe_allow_html=True)
+    
+    tab_m, tab_h, tab_e = st.tabs(["Médicos Especialistas", "Horario Disponible", "Equipos Médicos"])
+    
+    with tab_m:
+        df_med = pd.DataFrame(run_query("SELECT m.nombre, m.apellido, e.nombre_especialidad FROM medicos m JOIN especialidades e ON m.id_especialidad = e.id_especialidad"))
+        if not df_med.empty:
+            df_med.columns = ['Nombre', 'Apellido', 'Especialidad']
+            st.dataframe(df_med, use_container_width=True)
+            
+    with tab_h:
+        medicos_list_h = run_query("SELECT id_medico, CONCAT(nombre, ' ', apellido) as medico FROM medicos")
+        if medicos_list_h:
+            medico_dict_h = {m['medico']: m['id_medico'] for m in medicos_list_h}
+            medico_seleccionado = st.selectbox(
+                "Seleccione un Médico para ver sus horarios disponibles:", 
+                options=list(medico_dict_h.keys()), 
+                key="filtro_medico_horario"
+            )
+            
+            id_med_seleccionado = medico_dict_h[medico_seleccionado]
+            
+            citas_ocupadas_query = """
+                SELECT id_horario 
+                FROM cita_medica 
+                WHERE id_medico = %s AND COALESCE(estado_cita, 'Pendiente') = 'Pendiente'
+            "yle), Paragraph(f"Bs. {totales_dict['ves']:,.2f}", cell_style)],
         [Paragraph("Ingresos Clínica (Consultorios + Equipos)", cell_style), Paragraph(f"${totales_dict['clinica_usd']:,.2f}", cell_style), Paragraph(f"${totales_dict['clinica_cop']:,.2f}", cell_style), Paragraph("-", cell_style)],
         [Paragraph("Honorarios Médicos", cell_style), Paragraph(f"${totales_dict['medicos_usd']:,.2f}", cell_style), Paragraph(f"${totales_dict['medicos_cop']:,.2f}", cell_style), Paragraph("-", cell_style)]
     ]
