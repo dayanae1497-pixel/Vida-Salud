@@ -787,40 +787,36 @@ if not st.session_state.logged_in:
 
     col1, col2, col3 = st.columns([1, 1.3, 1])
     with col2:
-        st.markdown("""
-            <div style="background-color: #FFFFFF; border: 3px solid #2D8A5E; border-radius: 20px; padding: 25px 30px; box-shadow: 0px 8px 20px rgba(0,0,0,0.1); margin-top: 10px;">
-                <h2 style="color: #15432A; text-align: center; margin-top: 0; font-weight: 800; font-size: 24px;">Credenciales de Acceso</h2>
-            </div>
-        """,
-        unsafe_allow_html=True
-        )
-        
-        with st.form("login_form"):
-            st.markdown("<p style='color: #15432A; font-weight: bold; margin-bottom: 2px;'>Usuario</p>", unsafe_allow_html=True)
-            username = st.text_input("Usuario", placeholder="", label_visibility="collapsed")
+        with st.container(border=True):
+            st.markdown("<h2 style='color: #15432A; text-align: center; margin-top: 0; font-weight: 800; font-size: 24px;'>Credenciales de Acceso</h2>", unsafe_allow_html=True)
             
-            st.markdown("<p style='color: #15432A; font-weight: bold; margin-bottom: 2px; margin-top: 10px;'>Contraseña</p>", unsafe_allow_html=True)
-            password = st.text_input("Contraseña", type="password", placeholder="", label_visibility="collapsed")
-            
-            st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
-            submit_login = st.form_submit_button("INGRESAR AL SISTEMA", use_container_width=True)
-            
-            if submit_login:
-                query = """
-                    SELECT u.*, r.descripcion as rol_nombre 
-                    FROM usuario u 
-                    JOIN rol r ON u.id_rol = r.id_rol 
-                    WHERE u.nombre_usuario = %s AND u.clave = %s
-                """
-                user_record = run_query(query, (username, password))
-                if user_record:
-                    st.session_state.logged_in = True
-                    st.session_state.user = user_record[0]['nombre_usuario']
-                    st.session_state.role = user_record[0]['rol_nombre']
-                    st.rerun()
-                else:
-                    st.error("Credenciales incorrectas. Verifica tus datos.")
+            with st.form("login_form"):
+                st.markdown("<p style='color: #15432A; font-weight: bold; margin-bottom: 2px;'>Usuario</p>", unsafe_allow_html=True)
+                username = st.text_input("Usuario", placeholder="", label_visibility="collapsed")
+                
+                st.markdown("<p style='color: #15432A; font-weight: bold; margin-bottom: 2px; margin-top: 10px;'>Contraseña</p>", unsafe_allow_html=True)
+                password = st.text_input("Contraseña", type="password", placeholder="", label_visibility="collapsed")
+                
+                st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
+                submit_login = st.form_submit_button("INGRESAR AL SISTEMA", use_container_width=True)
+                
+                if submit_login:
+                    query = """
+                        SELECT u.*, r.descripcion as rol_nombre 
+                        FROM usuario u 
+                        JOIN rol r ON u.id_rol = r.id_rol 
+                        WHERE u.nombre_usuario = %s AND u.clave = %s
+                    """
+                    user_record = run_query(query, (username, password))
+                    if user_record:
+                        st.session_state.logged_in = True
+                        st.session_state.user = user_record[0]['nombre_usuario']
+                        st.session_state.role = user_record[0]['rol_nombre']
+                        st.rerun()
+                    else:
+                        st.error("Credenciales incorrectas. Verifica tus datos.")
         st.stop()
+
 
 # ==========================================
 # 2. PANEL PRINCIPAL Y BARRA LATERAL
