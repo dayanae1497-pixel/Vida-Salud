@@ -820,12 +820,13 @@ if not st.session_state.logged_in:
 # ==========================================
 st.sidebar.markdown(f"""
     <div style="margin-bottom: 15px;">
-        <h3 style="margin:0; font-size: 22px; font-weight: 800;">👤 {st.session_state.user}</h3>
+        <h3 style="margin:0; font-size: 22px; font-weight: 800;">&#128100; {st.session_state.user}</h3>
         <p style="margin:2px 0 0 0; color: #80D8B6 !important; font-weight: bold;">Rol: {st.session_state.role}</p>
     </div>
     <hr style="border: 1px solid #72C79B; margin-bottom: 15px;">
     <p style="font-weight: 800; font-size: 18px; margin-bottom: 10px;">Navegación:</p>
 """, unsafe_allow_html=True)
+
 
 menu_options = ["🏠 Inicio", "📋 Agendar Cita", "📅 Citas Agendadas", "📜 Historial de Citas"]
 if st.session_state.role == 'Administrativo':
