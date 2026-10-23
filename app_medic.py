@@ -177,8 +177,8 @@ def init_connection():
     database="sistema_medico_db",
     connect_timeout=3  # Timeout corto para activar contingencia rápido si no hay red
     )
-        st.session_state['modo_offline'] = False
-        return conn
+    st.session_state['modo_offline'] = False
+    return conn
     except Exception:
         st.session_state['modo_offline'] = True
         return None
