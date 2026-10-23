@@ -128,6 +128,80 @@ button[data-testid="baseButton-header"] {
         background-color: #15432A !important;
         color: #FFFFFF !important;
     }}
+# --- INYECCIÓN DE ESTILOS CSS GLOBALES MEJORADOS ---
+def aplicar_estilos_maqueta():
+    bg_style = f"""
+        background: linear-gradient(rgba(242, 249, 245, 0.85), rgba(242, 249, 245, 0.85)),
+                    url("data:image/jpeg;base64,{b64_fondo}");
+        background-size: cover;
+        background-attachment: fixed;
+        background-position: center;
+    """ if b64_fondo else "background-color: #F2F9F5;"
+
+    css = f"""
+    <style>
+    /* Ocultar menú y footer, pero dejar visible la cabecera */
+    #MainMenu, footer {{ visibility: hidden; }}
+    
+    .stApp {{
+        {bg_style}
+        color: #15432A !important;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }}
+
+    section[data-testid="stSidebar"] {{
+        background-color: #2D8A5E !important;
+        width: 280px !important;
+    }}
+    
+    section[data-testid="stSidebar"] * {{
+        color: #FFFFFF !important;
+    }}
+
+    section[data-testid="stSidebar"] .stRadio div[role="radiogroup"] label {{
+        background-color: transparent !important;
+        padding: 8px 12px !important;
+        border-radius: 8px !important;
+        margin-bottom: 4px !important;
+    }}
+
+    section[data-testid="stSidebar"] .stRadio div[role="radiogroup"] label:hover {{
+        background-color: rgba(255, 255, 255, 0.15) !important;
+    }}
+
+    .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"], .stNumberInput input {{
+        background-color: #72C79B !important;
+        color: #0D2B1B !important;
+        border-radius: 25px !important;
+        border: 2px solid #2D8A5E !important;
+        font-weight: 800 !important;
+        font-size: 16px !important;
+        padding: 10px 18px !important;
+    }}
+
+    .stTextInput input::placeholder {{
+        color: #0D2B1B !important;
+        opacity: 0.8;
+    }}
+
+    .stButton>button, div[data-testid="stFormSubmitButton"]>button {{
+        background-color: #2D8A5E !important;
+        color: #FFFFFF !important;
+        border-radius: 25px !important;
+        font-weight: 800 !important;
+        font-size: 17px !important;
+        border: none !important;
+        padding: 12px 28px !important;
+        width: 100% !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+        box-shadow: 0px 4px 10px rgba(0,0,0,0.15) !important;
+    }}
+
+    .stButton>button:hover, div[data-testid="stFormSubmitButton"]>button:hover {{
+        background-color: #15432A !important;
+        color: #FFFFFF !important;
+    }}
 
     .stTabs [data-baseweb="tab-list"] {{
         gap: 8px;
@@ -164,6 +238,7 @@ button[data-testid="baseButton-header"] {
     st.markdown(css, unsafe_allow_html=True)
 
 aplicar_estilos_maqueta()
+
 
 def render_header(subtitulo="Portal de Acceso Restringido"):
     logo_html = f'<img src="data:image/jpeg;base64,{b64_logo}" style="height: 90px; margin-bottom: 5px;">' if b64_logo else '<h1 style="color:#15432A; margin:0;">💊 VIDACLINIC</h1>'
