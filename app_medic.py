@@ -818,14 +818,10 @@ if not st.session_state.logged_in:
 # ==========================================
 # 2. PANEL PRINCIPAL Y BARRA LATERAL
 # ==========================================
-st.sidebar.markdown(f"""
-    <div style="margin-bottom: 15px;">
-        <h3 style="margin:0; font-size: 22px; font-weight: 800;">&#128100; {st.session_state.user}</h3>
-        <p style="margin:2px 0 0 0; color: #80D8B6 !important; font-weight: bold;">Rol: {st.session_state.role}</p>
-    </div>
-    <hr style="border: 1px solid #72C79B; margin-bottom: 15px;">
-    <p style="font-weight: 800; font-size: 18px; margin-bottom: 10px;">Navegación:</p>
-""", unsafe_allow_html=True)
+st.sidebar.markdown(f"### 👤 {st.session_state.user}")
+st.sidebar.markdown(f"**Rol:** {st.session_state.role}")
+st.sidebar.markdown("---")
+st.sidebar.markdown("**Navegación:**")
 
 
 menu_options = ["🏠 Inicio", "📋 Agendar Cita", "📅 Citas Agendadas", "📜 Historial de Citas"]
