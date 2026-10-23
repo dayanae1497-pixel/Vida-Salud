@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pymysql
 import pandas as pd
@@ -6,6 +7,7 @@ from datetime import date
 import io
 import os
 import base64
+import ssl
 
 # Librerías para exportar a PDF con ReportLab
 from reportlab.lib.pagesizes import letter, landscape
@@ -48,17 +50,14 @@ def aplicar_estilos_maqueta():
 
     css = f"""
     <style>
-    /* Ocultar elementos innecesarios de Streamlit */
     #MainMenu, header, footer {{ visibility: hidden; }}
     
-    /* Fondo principal */
     .stApp {{
         {bg_style}
         color: #15432A !important;
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }}
 
-    /* BARRA LATERAL (SIDEBAR) */
     section[data-testid="stSidebar"] {{
         background-color: #2D8A5E !important;
         width: 280px !important;
@@ -68,7 +67,6 @@ def aplicar_estilos_maqueta():
         color: #FFFFFF !important;
     }}
 
-    /* Opciones de Radio del Sidebar */
     section[data-testid="stSidebar"] .stRadio div[role="radiogroup"] label {{
         background-color: transparent !important;
         padding: 8px 12px !important;
@@ -80,7 +78,6 @@ def aplicar_estilos_maqueta():
         background-color: rgba(255, 255, 255, 0.15) !important;
     }}
 
-    /* CAMPOS DE ENTRADA (COLOR DE LETRAS OPTIMIZADO) */
     .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"], .stNumberInput input {{
         background-color: #72C79B !important;
         color: #0D2B1B !important;
@@ -96,7 +93,6 @@ def aplicar_estilos_maqueta():
         opacity: 0.8;
     }}
 
-    /* BOTONES VERDES INSTITUCIONALES */
     .stButton>button, div[data-testid="stFormSubmitButton"]>button {{
         background-color: #2D8A5E !important;
         color: #FFFFFF !important;
@@ -116,7 +112,6 @@ def aplicar_estilos_maqueta():
         color: #FFFFFF !important;
     }}
 
-    /* PESTAÑAS (TABS) MAQUETADAS */
     .stTabs [data-baseweb="tab-list"] {{
         gap: 8px;
     }}
@@ -136,7 +131,6 @@ def aplicar_estilos_maqueta():
         color: #FFFFFF !important;
     }}
 
-    /* TABLAS VERDES */
     div[data-testid="stDataFrame"] {{
         background-color: rgba(114, 199, 155, 0.85) !important;
         border-radius: 15px !important;
@@ -154,7 +148,6 @@ def aplicar_estilos_maqueta():
 
 aplicar_estilos_maqueta()
 
-# --- HEADER / BANNER ---
 def render_header(subtitulo="Portal de Acceso Restringido"):
     logo_html = f'<img src="data:image/jpeg;base64,{b64_logo}" style="height: 90px; margin-bottom: 5px;">' if b64_logo else '<h1 style="color:#15432A; margin:0;">💊 VIDACLINIC</h1>'
     
@@ -164,8 +157,6 @@ def render_header(subtitulo="Portal de Acceso Restringido"):
             <h2 style="color: #15432A; margin: 5px 0 0 0; font-weight: 800; font-size: 26px; text-transform: uppercase;">{subtitulo}</h2>
         </div>
     """, unsafe_allow_html=True)
-
-import ssl
 
 # --- CONEXIÓN A LA BASE DE DATOS MYSQL EN AIVEN ---
 def init_connection():
@@ -201,7 +192,6 @@ def run_query(query, params=None, fetch=True):
         st.error(f"Error en la base de datos remota: {e}")
         return None
 
-# --- VERIFICACIÓN SEGURA DE COLUMNAS ---
 def asegurar_columnas_sistema():
     try:
         query_check = """
@@ -249,7 +239,7 @@ def generar_pdf_auditoria_master(df_citas, df_dividendos, df_infraestructura, to
     cell_style = ParagraphStyle('CellStyle', parent=styles['Normal'], fontSize=6, leading=7, textColor=colors.HexColor('#1F2926'), alignment=1)
     header_style = ParagraphStyle('HeaderStyle', parent=styles['Normal'], fontSize=6.5, leading=8, textColor=colors.whitesmoke, fontName='Helvetica-Bold', alignment=1)
     
-    elements.append(Paragraph(f"FARMAVIDA - INFORME COMPLETO DE AUDITORÍA Y CIERRE DE CICLO", title_style))
+    elements.append(Paragraph("FARMAVIDA - INFORME COMPLETO DE AUDITORÍA Y CIERRE DE CICLO", title_style))
     elements.append(Paragraph(f"<b>Fecha de Cierre:</b> {date.today()} | <b>Estado:</b> Consolidado Inmutable", subtitle_style))
     elements.append(Spacer(1, 4))
     
@@ -467,222 +457,6 @@ if selected_menu == "🏠 Inicio":
             )
             
             id_med_seleccionado = medico_dict_h[medico_seleccionado]
-
-
-    
-    resumen_data = [
-        [Paragraph("Concepto / Moneda", header_style), Paragraph("Total USD", header_style), Paragraph("Total COP", header_style), Paragraph("Total VES", header_style)],
-        [Paragraph("Balance Real Caja", cell_style), Paragraph(f"${totales_dict['usd']:,.2f}", cell_style), Paragraph(f"${totales_dict['cop']:,.2f}", cell_style), Paragraph(f"Bs. {totales_dict['ves']:,.2f}", cell_style)],
-        [Paragraph("Ingresos Clínica (Consultorios + Equipos)", cell_style), Paragraph(f"${totales_dict['clinica_usd']:,.2f}", cell_style), Paragraph(f"${totales_dict['clinica_cop']:,.2f}", cell_style), Paragraph("-", cell_style)],
-        [Paragraph("Honorarios Médicos", cell_style), Paragraph(f"${totales_dict['medicos_usd']:,.2f}", cell_style), Paragraph(f"${totales_dict['medicos_cop']:,.2f}", cell_style), Paragraph("-", cell_style)]
-    ]
-    t_resumen = Table(resumen_data, colWidths=[220, 180, 180, 182])
-    t_resumen.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1A5235')),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#2D8A5E')),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#F2F9F5')),
-    ]))
-    elements.append(t_resumen)
-    elements.append(Spacer(1, 6))
-
-    if not df_infraestructura.empty:
-        headers_inf = [Paragraph(str(col), header_style) for col in df_infraestructura.columns.tolist()]
-        data_inf = [headers_inf]
-        for row in df_infraestructura.astype(str).values.tolist():
-            data_inf.append([Paragraph(cell, cell_style) for cell in row])
-        t_inf = Table(data_inf, colWidths=[762 / len(df_infraestructura.columns)] * len(df_infraestructura.columns))
-        t_inf.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1A5235')),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#2D8A5E')),
-            ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#F2F9F5')),
-        ]))
-        elements.append(t_inf)
-
-    
-def generar_pdf_reporte(titulo, df):
-    buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=landscape(letter), rightMargin=15, leftMargin=15, topMargin=20, bottomMargin=20)
-    elements = []
-    
-    styles = getSampleStyleSheet()
-    title_style = ParagraphStyle('TitleStyle', parent=styles['Heading1'], fontSize=12, textColor=colors.HexColor('#15432A'), spaceAfter=8)
-    cell_style = ParagraphStyle('CellStyle', parent=styles['Normal'], fontSize=6.5, leading=8, textColor=colors.HexColor('#1F2926'), alignment=1)
-    header_style = ParagraphStyle('HeaderStyle', parent=styles['Normal'], fontSize=7, leading=9, textColor=colors.whitesmoke, fontName='Helvetica-Bold', alignment=1)
-    
-    elements.append(Paragraph(f"FARMAVIDA - {titulo}", title_style))
-    elements.append(Spacer(1, 5))
-    
-    headers = [Paragraph(str(col), header_style) for col in df.columns.tolist()]
-    data = [headers]
-    for row in df.astype(str).values.tolist():
-        data.append([Paragraph(cell, cell_style) for cell in row])
-    
-    table = Table(data, colWidths=[762 / len(df.columns)] * len(df.columns))
-    table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1A5235')),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#F2F9F5')),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#2D8A5E')),
-    ]))
-    
-    elements.append(table)
-    doc.build(elements)
-    buffer.seek(0)
-    return buffer
-
-def actualizar_tasa_bcv_automatico():
-    hoy = date.today()
-    tasa_hoy = run_query("SELECT * FROM tasa_cambio WHERE fecha = %s", (hoy,))
-    if tasa_hoy:
-        return tasa_hoy[0]['id_tasa'], float(tasa_hoy[0]['tasa_usd_ves'])
-    
-    tasa_valor = None
-    try:
-        url = "https://ve.dolarapi.com/v1/dolares/oficial"
-        response = requests.get(url, timeout=5)
-        if response.status_code == 200:
-            data = response.json()
-            tasa_valor = float(data['price'])
-    except Exception:
-        pass
-
-    if not tasa_valor:
-        ultima_tasa = run_query("SELECT tasa_usd_ves FROM tasa_cambio ORDER BY fecha DESC LIMIT 1")
-        if ultima_tasa:
-            tasa_valor = float(ultima_tasa[0]['tasa_usd_ves'])
-        else:
-            tasa_valor = 881.876
-
-    query_insert_tasa = """
-        INSERT INTO tasa_cambio (fecha, tasa_usd_ves, fuente) 
-        VALUES (%s, %s, 'BCV') 
-        ON DUPLICATE KEY UPDATE tasa_usd_ves = VALUES(tasa_usd_ves)
-    """
-    run_query(query_insert_tasa, (hoy, tasa_valor), fetch=False)
-    
-    res = run_query("SELECT id_tasa FROM tasa_cambio WHERE fecha = %s", (hoy,))
-    if res:
-        return res[0]['id_tasa'], tasa_valor
-    return 1, tasa_valor
-
-# --- INICIALIZACIÓN DE SESIÓN ---
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
-    st.session_state.user = None
-    st.session_state.role = None
-
-if "nav_menu" not in st.session_state:
-    st.session_state.nav_menu = "🏠 Inicio (Portal Principal)"
-
-# ==========================================
-# 1. PANTALLA DE LOGIN (IDENTICA A IMAGEN 1)
-# ==========================================
-if not st.session_state.logged_in:
-    render_header("Portal de Acceso Restringido")
-
-    col1, col2, col3 = st.columns([1, 1.3, 1])
-    with col2:
-        st.markdown("""
-            <div style="background-color: #FFFFFF; border: 3px solid #2D8A5E; border-radius: 20px; padding: 25px 30px; box-shadow: 0px 8px 20px rgba(0,0,0,0.1); margin-top: 10px;">
-                <h2 style="color: #15432A; text-align: center; margin-top: 0; font-weight: 800; font-size: 24px;">Credenciales de Acceso</h2>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        with st.form("login_form"):
-            st.markdown("<p style='color: #15432A; font-weight: bold; margin-bottom: 2px;'>Usuario</p>", unsafe_allow_html=True)
-            username = st.text_input("Usuario", placeholder="", label_visibility="collapsed")
-            
-            st.markdown("<p style='color: #15432A; font-weight: bold; margin-bottom: 2px; margin-top: 10px;'>Contraseña</p>", unsafe_allow_html=True)
-            password = st.text_input("Contraseña", type="password", placeholder="", label_visibility="collapsed")
-            
-            st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
-            submit_login = st.form_submit_button("INGRESAR AL SISTEMA", use_container_width=True)
-            
-            if submit_login:
-                query = """
-                    SELECT u.*, r.descripcion as rol_nombre 
-                    FROM usuario u 
-                    JOIN rol r ON u.id_rol = r.id_rol 
-                    WHERE u.nombre_usuario = %s AND u.clave = %s
-                """
-                user_record = run_query(query, (username, password))
-                if user_record:
-                    st.session_state.logged_in = True
-                    st.session_state.user = user_record[0]['nombre_usuario']
-                    st.session_state.role = user_record[0]['rol_nombre']
-                    st.rerun()
-                else:
-                    st.error("Credenciales incorrectas. Verifica tus datos.")
-        st.stop()
-
-# ==========================================
-# 2. PANEL PRINCIPAL CON SIDEBAR EXACTO (IMAGEN 2)
-# ==========================================
-st.sidebar.markdown(f"""
-    <div style="margin-bottom: 15px;">
-        <h3 style="margin:0; font-size: 22px; font-weight: 800;">👤 {st.session_state.user}</h3>
-        <p style="margin:2px 0 0 0; color: #80D8B6 !important; font-weight: bold;">Rol: {st.session_state.role}</p>
-    </div>
-    <hr style="border: 1px solid #72C79B; margin-bottom: 15px;">
-    <p style="font-weight: 800; font-size: 18px; margin-bottom: 10px;">Navegación:</p>
-""", unsafe_allow_html=True)
-
-menu_options = ["🏠 Inicio", "📋 Agendar Cita", "📅 Citas Agendadas"]
-if st.session_state.role == 'Administrativo':
-    menu_options.append("📊 Panel Administrativo")
-    menu_options.append("💰 Pago a Médicos")
-
-menu_options.append("🔒 Cerrar Sesión")
-
-selected_menu = st.sidebar.radio("Navegación", menu_options, key="nav_menu_radio", label_visibility="collapsed")
-
-# Mascota en la parte inferior del sidebar
-if b64_mascota:
-    st.sidebar.markdown(f"""
-        <div style="text-align: center; margin-top: 30px;">
-            <img src="data:image/png;base64,{b64_mascota}" style="width: 140px; height: auto;">
-        </div>
-    """, unsafe_allow_html=True)
-
-if st.session_state.get("force_nav"):
-    selected_menu = st.session_state.force_nav
-    st.session_state.force_nav = None
-
-if selected_menu == "🔒 Cerrar Sesión":
-    st.session_state.logged_in = False
-    st.session_state.user = None
-    st.session_state.role = None
-    st.rerun()
-
-# Banner Principal del Dashboard
-render_header("Sistema Unificado de Gestión Médica y Control Financiero.")
-
-# ------------------------------------------
-# MÓDULO 1: INICIO
-# ------------------------------------------
-if selected_menu == "🏠 Inicio":
-    st.markdown("<h1 style='color: #15432A; font-size: 36px; font-weight: 900; margin-bottom: 15px;'>Información General:</h1>", unsafe_allow_html=True)
-    
-    tab_m, tab_h, tab_e = st.tabs(["Médicos Especialistas", "Horario Disponible", "Equipos Médicos"])
-    
-    with tab_m:
-        df_med = pd.DataFrame(run_query("SELECT m.nombre, m.apellido, e.nombre_especialidad FROM medicos m JOIN especialidades e ON m.id_especialidad = e.id_especialidad"))
-        if not df_med.empty:
-            df_med.columns = ['Nombre', 'Apellido', 'Especialidad']
-            st.dataframe(df_med, use_container_width=True)
-            
-    with tab_h:
-        medicos_list_h = run_query("SELECT id_medico, CONCAT(nombre, ' ', apellido) as medico FROM medicos")
-        if medicos_list_h:
-            medico_dict_h = {m['medico']: m['id_medico'] for m in medicos_list_h}
-            medico_seleccionado = st.selectbox(
-                "Seleccione un Médico para ver sus horarios disponibles:", 
-                options=list(medico_dict_h.keys()), 
-                key="filtro_medico_horario"
-            )
-            
-            id_med_seleccionado = medico_dict_h[medico_seleccionado]
             
             citas_ocupadas_query = """
                 SELECT id_horario 
@@ -783,7 +557,7 @@ elif selected_menu == "📋 Agendar Cita":
     if tipo_servicio == "Examen Especializado":
         equipos_list = run_query("SELECT id_equipo, descripcion FROM equipo")
         equipo_dict = {eq['descripcion']: eq['id_equipo'] for eq in equipos_list}
-        st.markdown("<p style='color: ##000000; font-weight: bold; margin:0;'>Seleccione Equipo</p>", unsafe_allow_html=True)
+        st.markdown("<p style='color: #15432A; font-weight: bold; margin:0;'>Seleccione Equipo</p>", unsafe_allow_html=True)
         equipo_sel_str = st.selectbox("Seleccione Equipo", options=list(equipo_dict.keys()), key="c_equipo_unico", label_visibility="collapsed")
         equipo_sel_id = equipo_dict[equipo_sel_str]
 
@@ -886,81 +660,192 @@ elif selected_menu == "📋 Agendar Cita":
                         st.rerun()
 
 # ------------------------------------------
-# MÓDULO 3: CITAS AGENDADAS
+# MÓDULO 3: CITAS AGENDADAS Y REPORTES POR DOCTOR
 # ------------------------------------------
 elif selected_menu == "📅 Citas Agendadas":
-    st.markdown("<h1 style='color: #15432A; font-size: 36px; font-weight: 900;'>Citas Agendadas</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='color: #15432A; font-size: 36px; font-weight: 900;'>Citas Agendadas y Reportes</h1>", unsafe_allow_html=True)
 
-    citas_esp_query = """
-        SELECT 
-            cm.id_cita, es.nombre_especialidad as especialidad,
-            CONCAT(p.nombre, ' ', p.apellido) as paciente,
-            CONCAT(m.nombre, ' ', m.apellido) as medico,
-            co.descripcion as consultorio,
-            CONCAT(d.Descripción, ' (', h.hora_inicio, ' - ', h.hora_fin, ')') as horario,
-            cm.costo_total_usd as total_usd, 
-            cm.costo_total_cop as total_cop,
-            cm.costo_total_ves as total_ves,
-            COALESCE(cm.moneda_pago, 'Dólares (USD)') as moneda_pago,
-            COALESCE(cm.estado_cita, 'Pendiente') as estado_cita
-        FROM cita_medica cm
-        JOIN paciente p ON cm.id_paciente = p.id_paciente
-        JOIN medicos m ON cm.id_medico = m.id_medico
-        JOIN especialidades es ON m.id_especialidad = es.id_especialidad
-        JOIN consultorio co ON cm.id_consultorio = co.id_consultorio
-        JOIN horario h ON cm.id_horario = h.id_horario
-        JOIN dias d ON h.id_dia = d.id_dia
-        WHERE COALESCE(cm.estado_cita, 'Pendiente') = 'Pendiente'
-        ORDER BY es.nombre_especialidad
-    """
-    df_citas_esp = pd.DataFrame(run_query(citas_esp_query))
+    tab_general, tab_doctor = st.tabs(["📋 Todas las Citas Pendientes", "👨‍⚕️ Citas Pendientes por Doctor"])
 
-    if not df_citas_esp.empty:
-        especialidades = df_citas_esp['especialidad'].unique().tolist()
-        filtro_esp = st.selectbox("Filtrar por Especialidad", ["Todas"] + especialidades)
+    with tab_general:
+        citas_esp_query = """
+            SELECT 
+                cm.id_cita, es.nombre_especialidad as especialidad,
+                CONCAT(p.nombre, ' ', p.apellido) as paciente,
+                CONCAT(m.nombre, ' ', m.apellido) as medico,
+                co.descripcion as consultorio,
+                CONCAT(d.Descripción, ' (', h.hora_inicio, ' - ', h.hora_fin, ')') as horario,
+                cm.costo_total_usd as total_usd, 
+                cm.costo_total_cop as total_cop,
+                cm.costo_total_ves as total_ves,
+                COALESCE(cm.moneda_pago, 'Dólares (USD)') as moneda_pago,
+                COALESCE(cm.estado_cita, 'Pendiente') as estado_cita
+            FROM cita_medica cm
+            JOIN paciente p ON cm.id_paciente = p.id_paciente
+            JOIN medicos m ON cm.id_medico = m.id_medico
+            JOIN especialidades es ON m.id_especialidad = es.id_especialidad
+            JOIN consultorio co ON cm.id_consultorio = co.id_consultorio
+            JOIN horario h ON cm.id_horario = h.id_horario
+            JOIN dias d ON h.id_dia = d.id_dia
+            WHERE COALESCE(cm.estado_cita, 'Pendiente') = 'Pendiente'
+            ORDER BY es.nombre_especialidad
+        """
+        df_citas_esp = pd.DataFrame(run_query(citas_esp_query))
 
-        df_filtrado = df_citas_esp.copy()
-        if filtro_esp != "Todas":
-            df_filtrado = df_filtrado[df_filtrado['especialidad'] == filtro_esp]
+        if not df_citas_esp.empty:
+            especialidades = df_citas_esp['especialidad'].unique().tolist()
+            filtro_esp = st.selectbox("Filtrar por Especialidad", ["Todas"] + especialidades)
 
-        if st.session_state.role == 'Administrativo':
-            df_mostrar_tabla = df_filtrado[['id_cita', 'especialidad', 'paciente', 'medico', 'consultorio', 'horario', 'total_usd', 'total_cop', 'total_ves', 'moneda_pago']].copy()
-            df_mostrar_tabla.insert(0, 'Completar', False)
-            df_mostrar_tabla.columns = ['Completar', 'ID', 'Especialidad', 'Paciente', 'Médico', 'Consultorio', 'Horario', 'Total (USD)', 'Total (COP)', 'Total (VES)', 'Moneda Pago']
+            df_filtrado = df_citas_esp.copy()
+            if filtro_esp != "Todas":
+                df_filtrado = df_filtrado[df_filtrado['especialidad'] == filtro_esp]
+
+            if st.session_state.role == 'Administrativo':
+                df_mostrar_tabla = df_filtrado[['id_cita', 'especialidad', 'paciente', 'medico', 'consultorio', 'horario', 'total_usd', 'total_cop', 'total_ves', 'moneda_pago']].copy()
+                df_mostrar_tabla.insert(0, 'Completar', False)
+                df_mostrar_tabla.columns = ['Completar', 'ID', 'Especialidad', 'Paciente', 'Médico', 'Consultorio', 'Horario', 'Total (USD)', 'Total (COP)', 'Total (VES)', 'Moneda Pago']
+            else:
+                df_mostrar_tabla = df_filtrado[['id_cita', 'especialidad', 'paciente', 'medico', 'consultorio', 'horario', 'moneda_pago']].copy()
+                df_mostrar_tabla.insert(0, 'Completar', False)
+                df_mostrar_tabla.columns = ['Completar', 'ID', 'Especialidad', 'Paciente', 'Médico', 'Consultorio', 'Horario', 'Moneda Pago']
+
+            edited_df = st.data_editor(df_mostrar_tabla, use_container_width=True, hide_index=True)
+
+            if st.button("MARCAR SELECCIONADAS COMO CUMPLIDAS", use_container_width=True):
+                filas_seleccionadas = edited_df[edited_df['Completar'] == True]
+                if not filas_seleccionadas.empty:
+                    for idx, row in filas_seleccionadas.iterrows():
+                        id_cita_item = row['ID']
+                        run_query("UPDATE cita_medica SET estado_cita = 'Cumplida' WHERE id_cita = %s", (id_cita_item,), fetch=False)
+                    st.success("¡Citas completadas!")
+                    st.rerun()
+
+            col_exp1, col_exp2 = st.columns(2)
+            with col_exp1:
+                pdf_data = generar_pdf_reporte("Citas Pendientes por Especialidad", df_mostrar_tabla.drop(columns=['Completar']))
+                st.download_button("📄 Descargar Reporte en PDF", data=pdf_data, file_name="citas_especialidad.pdf", mime="application/pdf", use_container_width=True)
+            with col_exp2:
+                excel_buffer = io.BytesIO()
+                with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
+                    df_mostrar_tabla.drop(columns=['Completar']).to_excel(writer, index=False, sheet_name='Citas')
+                excel_buffer.seek(0)
+                st.download_button("📊 Descargar Reporte en Excel", data=excel_buffer, file_name="citas_especialidad.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
         else:
-            df_mostrar_tabla = df_filtrado[['id_cita', 'especialidad', 'paciente', 'medico', 'consultorio', 'horario', 'moneda_pago']].copy()
-            df_mostrar_tabla.insert(0, 'Completar', False)
-            df_mostrar_tabla.columns = ['Completar', 'ID', 'Especialidad', 'Paciente', 'Médico', 'Consultorio', 'Horario', 'Moneda Pago']
+            st.info("🎉 ¡No hay citas pendientes!")
 
-        edited_df = st.data_editor(df_mostrar_tabla, use_container_width=True, hide_index=True)
+    with tab_doctor:
+        medicos_rep = run_query("SELECT id_medico, CONCAT(nombre, ' ', apellido) as medico FROM medicos")
+        if medicos_rep:
+            med_dict_rep = {m['medico']: m['id_medico'] for m in medicos_rep}
+            doc_sel_rep = st.selectbox("Seleccione el Doctor para Generar Reporte", list(med_dict_rep.keys()))
+            id_doc_sel = med_dict_rep[doc_sel_rep]
 
-        if st.button("MARCAR SELECCIONADAS COMO CUMPLIDAS", use_container_width=True):
-            filas_seleccionadas = edited_df[edited_df['Completar'] == True]
-            if not filas_seleccionadas.empty:
-                for idx, row in filas_seleccionadas.iterrows():
-                    id_cita_item = row['ID']
-                    run_query("UPDATE cita_medica SET estado_cita = 'Cumplida' WHERE id_cita = %s", (id_cita_item,), fetch=False)
-                st.success("¡Citas completadas!")
-                st.rerun()
+            query_doc_pendientes = """
+                SELECT 
+                    cm.id_cita as 'ID Cita',
+                    CONCAT(p.nombre, ' ', p.apellido) as 'Paciente',
+                    p.padecimiento as 'Motivo',
+                    co.descripcion as 'Consultorio',
+                    CONCAT(d.Descripción, ' (', h.hora_inicio, ' - ', h.hora_fin, ')') as 'Horario',
+                    cm.moneda_pago as 'Moneda'
+                FROM cita_medica cm
+                JOIN paciente p ON cm.id_paciente = p.id_paciente
+                JOIN consultorio co ON cm.id_consultorio = co.id_consultorio
+                JOIN horario h ON cm.id_horario = h.id_horario
+                JOIN dias d ON h.id_dia = d.id_dia
+                WHERE cm.id_medico = %s AND COALESCE(cm.estado_cita, 'Pendiente') = 'Pendiente'
+            """
+            df_doc_pendientes = pd.DataFrame(run_query(query_doc_pendientes, (id_doc_sel,)))
 
-        col_exp1, col_exp2 = st.columns(2)
-        with col_exp1:
-            pdf_data = generar_pdf_reporte("Citas Pendientes por Especialidad", df_mostrar_tabla.drop(columns=['Completar']))
-            st.download_button("📄 Descargar Reporte en PDF", data=pdf_data, file_name="citas_especialidad.pdf", mime="application/pdf", use_container_width=True)
-        with col_exp2:
-            excel_buffer = io.BytesIO()
-            with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
-                df_mostrar_tabla.drop(columns=['Completar']).to_excel(writer, index=False, sheet_name='Citas')
-            excel_buffer.seek(0)
-            st.download_button("📊 Descargar Reporte en Excel", data=excel_buffer, file_name="citas_especialidad.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
-    else:
-        st.info("🎉 ¡No hay citas pendientes!")
+            if not df_doc_pendientes.empty:
+                st.dataframe(df_doc_pendientes, use_container_width=True, hide_index=True)
+                col_dr1, col_dr2 = st.columns(2)
+                with col_dr1:
+                    pdf_dr = generar_pdf_reporte(f"Citas Pendientes - Dr(a). {doc_sel_rep}", df_doc_pendientes)
+                    st.download_button("📄 Descargar Reporte Doctor (PDF)", data=pdf_dr, file_name=f"citas_pendientes_{id_doc_sel}.pdf", mime="application/pdf", use_container_width=True)
+                with col_dr2:
+                    excel_doc_buf = io.BytesIO()
+                    with pd.ExcelWriter(excel_doc_buf, engine='openpyxl') as writer:
+                        df_doc_pendientes.to_excel(writer, index=False, sheet_name='Pendientes_Doctor')
+                    excel_doc_buf.seek(0)
+                    st.download_button("📊 Descargar Reporte Doctor (Excel)", data=excel_doc_buf, file_name=f"citas_pendientes_{id_doc_sel}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
+            else:
+                st.info(f"El Dr(a). {doc_sel_rep} no tiene citas pendientes agendadas.")
 
 # ------------------------------------------
-# MÓDULO 4: PANEL ADMINISTRATIVO
+# MÓDULO 4: HISTORIAL DE CITAS
+# ------------------------------------------
+elif selected_menu == "📜 Historial de Citas":
+    st.markdown("<h1 style='color: #15432A; font-size: 36px; font-weight: 900;'>Historial de Citas Anteriores</h1>", unsafe_allow_html=True)
+    
+    tab_hist_p, tab_hist_d = st.tabs(["👤 Historial por Paciente", "👨‍⚕️ Historial por Doctor"])
+
+    with tab_hist_p:
+        pacientes_list = run_query("SELECT id_paciente, CONCAT(nombre, ' ', apellido) as paciente FROM paciente GROUP BY nombre, apellido")
+        if pacientes_list:
+            pac_dict = {p['paciente']: p['id_paciente'] for p in pacientes_list}
+            paciente_sel_hist = st.selectbox("Seleccione Paciente para consultar historial:", list(pac_dict.keys()))
+            
+            query_hist_pac = """
+                SELECT 
+                    cm.id_cita as 'ID',
+                    CONCAT(m.nombre, ' ', m.apellido) as 'Médico',
+                    co.descripcion as 'Consultorio',
+                    CONCAT(d.Descripción, ' (', h.hora_inicio, ' - ', h.hora_fin, ')') as 'Horario',
+                    p.padecimiento as 'Motivo',
+                    cm.estado_cita as 'Estado Cita',
+                    cm.costo_total_usd as 'Monto USD'
+                FROM cita_medica cm
+                JOIN paciente p ON cm.id_paciente = p.id_paciente
+                JOIN medicos m ON cm.id_medico = m.id_medico
+                JOIN consultorio co ON cm.id_consultorio = co.id_consultorio
+                JOIN horario h ON cm.id_horario = h.id_horario
+                JOIN dias d ON h.id_dia = d.id_dia
+                WHERE CONCAT(p.nombre, ' ', p.apellido) = %s
+                ORDER BY cm.id_cita DESC
+            """
+            df_hist_p = pd.DataFrame(run_query(query_hist_pac, (paciente_sel_hist,)))
+            if not df_hist_p.empty:
+                st.dataframe(df_hist_p, use_container_width=True, hide_index=True)
+            else:
+                st.info("No se encontraron registros anteriores para este paciente.")
+
+    with tab_hist_d:
+        medicos_hist = run_query("SELECT id_medico, CONCAT(nombre, ' ', apellido) as medico FROM medicos")
+        if medicos_hist:
+            med_dict_hist = {m['medico']: m['id_medico'] for m in medicos_hist}
+            medico_sel_hist = st.selectbox("Seleccione Doctor para consultar historial:", list(med_dict_hist.keys()))
+            
+            query_hist_doc = """
+                SELECT 
+                    cm.id_cita as 'ID Cita',
+                    CONCAT(p.nombre, ' ', p.apellido) as 'Paciente',
+                    co.descripcion as 'Consultorio',
+                    CONCAT(d.Descripción, ' (', h.hora_inicio, ' - ', h.hora_fin, ')') as 'Horario',
+                    p.padecimiento as 'Motivo Consulta',
+                    cm.estado_cita as 'Estado Cita',
+                    cm.estado_pago as 'Estado Pago'
+                FROM cita_medica cm
+                JOIN paciente p ON cm.id_paciente = p.id_paciente
+                JOIN consultorio co ON cm.id_consultorio = co.id_consultorio
+                JOIN horario h ON cm.id_horario = h.id_horario
+                JOIN dias d ON h.id_dia = d.id_dia
+                WHERE cm.id_medico = %s
+                ORDER BY cm.id_cita DESC
+            """
+            df_hist_d = pd.DataFrame(run_query(query_hist_doc, (med_dict_hist[medico_sel_hist],)))
+            if not df_hist_d.empty:
+                st.dataframe(df_hist_d, use_container_width=True, hide_index=True)
+            else:
+                st.info("No se encontraron registros de citas anteriores para este doctor.")
+
+# ------------------------------------------
+# MÓDULO 5: PANEL ADMINISTRATIVO
 # ------------------------------------------
 elif selected_menu == "📊 Panel Administrativo" and st.session_state.role == 'Administrativo':
-    st.markdown("<h1 style='color: #15432A; font-size: 36px; font-weight: 900;'>Panel Administrativo</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='color: #15432A; font-size: 36px; font-weight: 900;'>Panel Administrativo y Baremo</h1>", unsafe_allow_html=True)
+
+    tab_admin1, tab_baremo = st.tabs(["💰 Auditoría y Cierre de Ciclo", "⚖️ Balance General"])
 
     citas_query = """
         SELECT 
@@ -991,59 +876,83 @@ elif selected_menu == "📊 Panel Administrativo" and st.session_state.role == '
     """
     df_citas = pd.DataFrame(run_query(citas_query))
 
-    if not df_citas.empty:
-        df_mostrar = df_citas[[
-            'id_cita', 'paciente', 'medico', 'consultorio', 'servicio_examen', 'horario', 
-            'moneda_pago', 'comprobante', 'costo_total_usd', 'costo_total_cop', 'costo_total_ves',
-            'honorarios_medicos_usd', 'honorarios_medicos_cop', 'ingresos_clinica_usd', 'ingresos_clinica_cop'
-        ]].copy()
+    with tab_admin1:
+        if not df_citas.empty:
+            df_mostrar = df_citas[[
+                'id_cita', 'paciente', 'medico', 'consultorio', 'servicio_examen', 'horario', 
+                'moneda_pago', 'comprobante', 'costo_total_usd', 'costo_total_cop', 'costo_total_ves',
+                'honorarios_medicos_usd', 'honorarios_medicos_cop', 'ingresos_clinica_usd', 'ingresos_clinica_cop'
+            ]].copy()
+            
+            df_mostrar.columns = [
+                'ID', 'Paciente', 'Médico', 'Consultorio', 'Servicio / Examen', 'Horario', 
+                'Moneda', 'Ref', 'Total USD', 'Total COP', 'Total VES', 
+                'Honorarios USD', 'Honorarios COP', 'Clínica USD', 'Clínica COP'
+            ]
+            
+            st.dataframe(df_mostrar, use_container_width=True)
+
+            total_usd_real = float(df_citas[df_citas['moneda_pago'] == 'Dólares (USD)']['costo_total_usd'].sum())
+            total_cop_real = float(df_citas[df_citas['moneda_pago'] == 'Pesos Colombianos (COP)']['costo_total_cop'].sum())
+            total_ves_real = float(df_citas[df_citas['moneda_pago'] == 'Bolívares (VES)']['costo_total_ves'].sum())
+
+            col_b1, col_b2, col_b3 = st.columns(3)
+            with col_b1: st.metric("Real en Dólares (USD)", f"${total_usd_real:,.2f}")
+            with col_b2: st.metric("Real en Pesos (COP)", f"${total_cop_real:,.2f}")
+            with col_b3: st.metric("Real en Bolívares (VES)", f"Bs. {total_ves_real:,.2f}")
+
+            infra_query = "SELECT descripcion as 'Descripción / Infraestructura', costo_usd as 'Costo USD', (costo_usd * 3100.0) as 'Costo COP' FROM consultorio UNION SELECT descripcion as 'Descripción / Infraestructura', costo_usd as 'Costo USD', (costo_usd * 3100.0) as 'Costo COP' FROM equipo"
+            df_infraestructura = pd.DataFrame(run_query(infra_query))
+
+            med_div_query = "SELECT m.id_medico as 'ID', CONCAT(m.nombre, ' ', m.apellido) as 'Médico', COUNT(cm.id_cita) as 'Citas', SUM(COALESCE(NULLIF(cm.total_honorario_usd, 0), m.honorario_usd)) as 'Hon. USD', SUM(COALESCE(NULLIF(cm.total_honorario_cop, 0), m.honorario_usd * 3100.0)) as 'Hon. COP' FROM medicos m JOIN cita_medica cm ON m.id_medico = cm.id_medico WHERE cm.estado_pago = 'Pendiente' GROUP BY m.id_medico"
+            df_div_cierre = pd.DataFrame(run_query(med_div_query))
+
+            totales_dict = {
+                "usd": total_usd_real, "cop": total_cop_real, "ves": total_ves_real,
+                "clinica_usd": float(df_citas['ingresos_clinica_usd'].sum()),
+                "clinica_cop": float(df_citas['ingresos_clinica_cop'].sum()),
+                "medicos_usd": float(df_citas['honorarios_medicos_usd'].sum()),
+                "medicos_cop": float(df_citas['honorarios_medicos_cop'].sum())
+            }
+
+            pdf_master_buffer = generar_pdf_auditoria_master(df_mostrar, df_div_cierre, df_infraestructura, totales_dict)
+
+            col_c1, col_c2 = st.columns(2)
+            with col_c1:
+                st.download_button(label="📄 Descargar PDF Auditor Completo", data=pdf_master_buffer, file_name=f"informe_auditoria_{date.today()}.pdf", mime="application/pdf", use_container_width=True)
+            with col_c2:
+                if st.button("🔄 EFECTUAR CIERRE DE CICLO", use_container_width=True):
+                    run_query("UPDATE cita_medica SET estado_pago = 'Pagado' WHERE estado_pago = 'Pendiente'", fetch=False)
+                    st.success("¡Cierre completado con éxito!")
+                    st.rerun()
+        else:
+            st.info("🎉 ¡No hay operaciones pendientes!")
+
+    with tab_baremo:
+        st.markdown("### 📊 Baremo Tarifario Institucional")
+        df_baremo_cons = pd.DataFrame(run_query("SELECT descripcion as 'Consultorio / Espacio', costo_usd as 'Tarifa Base USD', (costo_usd * 3100) as 'Tarifa Base COP' FROM consultorio"))
+        df_baremo_eq = pd.DataFrame(run_query("SELECT descripcion as 'Equipo / Estudio Especial', costo_usd as 'Tarifa Uso USD', (costo_usd * 3100) as 'Tarifa Uso COP' FROM equipo"))
         
-        df_mostrar.columns = [
-            'ID', 'Paciente', 'Médico', 'Consultorio', 'Servicio / Examen', 'Horario', 
-            'Moneda', 'Ref', 'Total USD', 'Total COP', 'Total VES', 
-            'Honorarios USD', 'Honorarios COP', 'Clínica USD', 'Clínica COP'
-        ]
+        st.markdown("#### 🏢 Tarifas de Consultorio")
+        st.dataframe(df_baremo_cons, use_container_width=True, hide_index=True)
         
-        st.dataframe(df_mostrar, use_container_width=True)
+        st.markdown("#### 🔬 Tarifas de Equipos Especializados")
+        st.dataframe(df_baremo_eq, use_container_width=True, hide_index=True)
 
-        total_usd_real = float(df_citas[df_citas['moneda_pago'] == 'Dólares (USD)']['costo_total_usd'].sum())
-        total_cop_real = float(df_citas[df_citas['moneda_pago'] == 'Pesos Colombianos (COP)']['costo_total_cop'].sum())
-        total_ves_real = float(df_citas[df_citas['moneda_pago'] == 'Bolívares (VES)']['costo_total_ves'].sum())
+        if not df_citas.empty:
+            ing_bruto_usd = float(df_citas['costo_total_usd'].sum())
+            egr_medicos_usd = float(df_citas['honorarios_medicos_usd'].sum())
+            neto_clinica_usd = float(df_citas['ingresos_clinica_usd'].sum())
 
-        col_b1, col_b2, col_b3 = st.columns(3)
-        with col_b1: st.metric("Real en Dólares (USD)", f"${total_usd_real:,.2f}")
-        with col_b2: st.metric("Real en Pesos (COP)", f"${total_cop_real:,.2f}")
-        with col_b3: st.metric("Real en Bolívares (VES)", f"Bs. {total_ves_real:,.2f}")
-
-        infra_query = "SELECT descripcion as 'Descripción / Infraestructura', costo_usd as 'Costo USD', (costo_usd * 3100.0) as 'Costo COP' FROM consultorio UNION SELECT descripcion as 'Descripción / Infraestructura', costo_usd as 'Costo USD', (costo_usd * 3100.0) as 'Costo COP' FROM equipo"
-        df_infraestructura = pd.DataFrame(run_query(infra_query))
-
-        med_div_query = "SELECT m.id_medico as 'ID', CONCAT(m.nombre, ' ', m.apellido) as 'Médico', COUNT(cm.id_cita) as 'Citas', SUM(COALESCE(NULLIF(cm.total_honorario_usd, 0), m.honorario_usd)) as 'Hon. USD', SUM(COALESCE(NULLIF(cm.total_honorario_cop, 0), m.honorario_usd * 3100.0)) as 'Hon. COP' FROM medicos m JOIN cita_medica cm ON m.id_medico = cm.id_medico WHERE cm.estado_pago = 'Pendiente' GROUP BY m.id_medico"
-        df_div_cierre = pd.DataFrame(run_query(med_div_query))
-
-        totales_dict = {
-            "usd": total_usd_real, "cop": total_cop_real, "ves": total_ves_real,
-            "clinica_usd": float(df_citas['ingresos_clinica_usd'].sum()),
-            "clinica_cop": float(df_citas['ingresos_clinica_cop'].sum()),
-            "medicos_usd": float(df_citas['honorarios_medicos_usd'].sum()),
-            "medicos_cop": float(df_citas['honorarios_medicos_cop'].sum())
-        }
-
-        pdf_master_buffer = generar_pdf_auditoria_master(df_mostrar, df_div_cierre, df_infraestructura, totales_dict)
-
-        col_c1, col_c2 = st.columns(2)
-        with col_c1:
-            st.download_button(label="📄 Descargar PDF Auditor Completo", data=pdf_master_buffer, file_name=f"informe_auditoria_{date.today()}.pdf", mime="application/pdf", use_container_width=True)
-        with col_c2:
-            if st.button("🔄 EFECTUAR CIERRE DE CICLO", use_container_width=True):
-                run_query("UPDATE cita_medica SET estado_pago = 'Pagado' WHERE estado_pago = 'Pendiente'", fetch=False)
-                st.success("¡Cierre completado con éxito!")
-                st.rerun()
-    else:
-        st.info("🎉 ¡No hay operaciones pendientes!")
+            st.markdown("---")
+            st.markdown("### ⚖️ Balance General Proyectado de Operaciones Pendientes")
+            c_bal1, c_bal2, c_bal3 = st.columns(3)
+            c_bal1.metric("Ingreso Bruto Proyectado", f"${ing_bruto_usd:,.2f} USD")
+            c_bal2.metric("Egresos por Honorarios Médicos", f"${egr_medicos_usd:,.2f} USD")
+            c_bal3.metric("Ganancia Neta Clínica", f"${neto_clinica_usd:,.2f} USD")
 
 # ------------------------------------------
-# MÓDULO 5: PAGO A MÉDICOS
+# MÓDULO 6: PAGO A MÉDICOS
 # ------------------------------------------
 elif selected_menu == "💰 Pago a Médicos" and st.session_state.role == 'Administrativo':
     st.markdown("<h1 style='color: #15432A; font-size: 36px; font-weight: 900;'>Pago a Médicos</h1>", unsafe_allow_html=True)
@@ -1077,8 +986,9 @@ elif selected_menu == "💰 Pago a Médicos" and st.session_state.role == 'Admin
             styles = getSampleStyleSheet()
             h1 = ParagraphStyle('H1', parent=styles['Heading1'], fontSize=12, textColor=colors.HexColor('#15432A'), spaceAfter=4)
             normal = ParagraphStyle('Normal', parent=styles['Normal'], fontSize=8, textColor=colors.HexColor('#1F2926'), spaceAfter=3)
+            center_style = ParagraphStyle('Center', parent=styles['Normal'], fontSize=8, textColor=colors.HexColor('#1F2926'), alignment=1)
             
-            elementos.append(Paragraph(f"<b>FARMAVIDA</b> - Comprobante de Pago de Honorarios Médicos", h1))
+            elementos.append(Paragraph("<b>FARMAVIDA</b> - Comprobante de Pago de Honorarios Médicos", h1))
             elementos.append(Paragraph(f"<b>Médico:</b> {medico_pago_sel} | <b>Fecha:</b> {date.today()}", normal))
             elementos.append(Paragraph(f"<b>Moneda de Cancelación:</b> {moneda_entrega_medico}", normal))
             elementos.append(Spacer(1, 5))
@@ -1094,9 +1004,24 @@ elif selected_menu == "💰 Pago a Médicos" and st.session_state.role == 'Admin
             ]))
             
             elementos.append(t_recibo)
+            elementos.append(Spacer(1, 30))
+
+            firmas_data = [
+                [
+                    Paragraph("___________________________________<br/><b>Firma del Médico Recipiente</b><br/>" + medico_pago_sel, center_style),
+                    Paragraph("___________________________________<br/><b>Administración / Control Financiero</b><br/>FARMAVIDA VIDACLINIC", center_style)
+                ]
+            ]
+            t_firmas = Table(firmas_data, colWidths=[380, 380])
+            t_firmas.setStyle(TableStyle([
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ]))
+            elementos.append(t_firmas)
+
             doc_recibo.build(elementos)
             buffer_recibo.seek(0)
             
-            st.download_button(label="📥 Descargar Recibo de Pago (PDF)", data=buffer_recibo, file_name=f"recibo_pago_{id_med_sel}.pdf", mime="application/pdf", use_container_width=True)
+            st.download_button(label="📥 Descargar Recibo de Pago con Firma (PDF)", data=buffer_recibo, file_name=f"recibo_pago_{id_med_sel}.pdf", mime="application/pdf", use_container_width=True)
     else:
         st.info("🎉 ¡No hay dividendos pendientes!")
