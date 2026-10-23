@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pymysql
 import pandas as pd
@@ -456,7 +457,9 @@ if selected_menu == "🏠 Inicio":
                 FROM cita_medica 
                 WHERE id_medico = %s AND COALESCE(estado_cita, 'Pendiente') = 'Pendiente'
             """
-            citas_ocupadas = run_qustyle)],
+            citas_ocupadas = run_query(citas_ocupadas_query, (id_med_seleccionado,))
+            ids_horarios_ocupados = [c['id_horario'] for c in citas_ocupadas] if citas_ocupadas else []
+
         [Paragraph("Ingresos Clínica (Consultorios + Equipos)", cell_style), Paragraph(f"${totales_dict['clinica_usd']:,.2f}", cell_style), Paragraph(f"${totales_dict['clinica_cop']:,.2f}", cell_style), Paragraph("-", cell_style)],
         [Paragraph("Honorarios Médicos", cell_style), Paragraph(f"${totales_dict['medicos_usd']:,.2f}", cell_style), Paragraph(f"${totales_dict['medicos_cop']:,.2f}", cell_style), Paragraph("-", cell_style)]
     ]
