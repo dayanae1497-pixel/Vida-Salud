@@ -461,9 +461,12 @@ if selected_menu == "🏠 Inicio":
         if medicos_list_h:
             medico_dict_h = {m['medico']: m['id_medico'] for m in medicos_list_h}
             medico_seleccionado = st.selectbox(
-                "Seleccione un Médico para ver sus horarios disponibles:" title_style))
-    elements.append(Paragraph(f"<b>Fecha de Cierre:</b> {date.today()} | <b>Estado:</b> Consolidado Inmutable", subtitle_style))
-    elements.append(Spacer(1, 4))
+                            medico_seleccionado = st.selectbox(
+                "Seleccione un Médico para ver sus horarios disponibles:", 
+                options=list(medico_dict_h.keys()), 
+                key="filtro_medico_horario"
+            )
+
     
     resumen_data = [
         [Paragraph("Concepto / Moneda", header_style), Paragraph("Total USD", header_style), Paragraph("Total COP", header_style), Paragraph("Total VES", header_style)],
