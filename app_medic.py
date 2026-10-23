@@ -462,7 +462,7 @@ if selected_menu == "🏠 Inicio":
 
         [Paragraph("Ingresos Clínica (Consultorios + Equipos)", cell_style), Paragraph(f"${totales_dict['clinica_usd']:,.2f}", cell_style), Paragraph(f"${totales_dict['clinica_cop']:,.2f}", cell_style), Paragraph("-", cell_style)],
         [Paragraph("Honorarios Médicos", cell_style), Paragraph(f"${totales_dict['medicos_usd']:,.2f}", cell_style), Paragraph(f"${totales_dict['medicos_cop']:,.2f}", cell_style), Paragraph("-", cell_style)]
-    ]
+    
     t_resumen = Table(resumen_data, colWidths=[220, 180, 180, 182])
     t_resumen.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1A5235')),
