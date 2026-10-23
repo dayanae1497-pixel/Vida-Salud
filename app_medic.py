@@ -50,7 +50,24 @@ def aplicar_estilos_maqueta():
 
     css = f"""
     <style>
-    #MainMenu, header, footer {{ visibility: hidden; }}
+    /* Ocultar menú y footer, pero DEJAR VISIBLE la flechita del sidebar */
+#MainMenu, footer { visibility: hidden; }
+
+/* Hacer visible el botón de abrir sidebar en móviles */
+header[data-testid="stHeader"] {
+    background: transparent !important;
+    z-index: 99999 !important;
+}
+
+button[data-testid="stHeaderNavStateButton"], 
+button[data-testid="baseButton-header"] {
+    visibility: visible !important;
+    display: block !important;
+    color: #15432A !important;
+    background-color: #72C79B !important;
+    border-radius: 50% !important;
+}
+
     
     .stApp {{
         {bg_style}
