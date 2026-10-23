@@ -498,10 +498,7 @@ if selected_menu == "🏠 Inicio":
         ]))
         elements.append(t_inf)
 
-    doc.build(elements)
-    buffer.seek(0)
-        return buffer
-
+    
 def generar_pdf_reporte(titulo, df):
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=landscape(letter), rightMargin=15, leftMargin=15, topMargin=20, bottomMargin=20)
