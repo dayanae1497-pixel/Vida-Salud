@@ -1024,7 +1024,7 @@ elif selected_menu == "📋 Agendar Cita":
         data = st.session_state.calculated_cita
         st.markdown(f"""
             <div style='background-color: #FFFFFF; padding: 20px; border-radius: 15px; border: 2px solid #2D8A5E; color: #15432A; margin-top: 15px;'>
-                <h3 style='margin:0;'>💰 Resumen Total a Pagar para el Paciente:</h3>
+                <h3 style='margin:0;'>\U0001F4B0 Resumen Total a Pagar para el Paciente:</h3>
                 <p style='margin:5px 0;'><b>Total USD:</b> ${data['total_usd']:.2f} USD | <b>Total COP:</b> ${data['total_cop']:,.2f} COP</p>
                 <p style='font-size: 18px; margin:0;'><b>Total Bolívares:</b> Bs. {data['total_ves']:,.2f} VES</p>
             </div>
