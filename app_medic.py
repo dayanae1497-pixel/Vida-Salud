@@ -166,8 +166,8 @@ def render_header(subtitulo="Portal de Acceso Restringido"):
     """, unsafe_allow_html=True)
 
 # --- CONEXIÓN A LA BASE DE DATOS MYSQL ---
-def conectar():
-    try:
+def init_connection():
+    return pymysql.connect
         password_db = st.secrets.get("password", "AVNS_ytphqSAjobNIHWjlbex")
         conn = mysql.connector.connect(
             host="mysql-68077f9-viacrucis2026.d.aivencloud.com",
