@@ -801,12 +801,12 @@ if not st.session_state.logged_in:
                 submit_login = st.form_submit_button("INGRESAR AL SISTEMA", use_container_width=True)
                 
                 if submit_login:
-                    query = """
+                query = """
                     SELECT u.*, r.descripcion as rol_nombre 
                     FROM usuario u 
                     JOIN rol r ON u.id_rol = r.id_rol 
                     WHERE u.nombre_usuario = %s AND u.clave = %s
-                    """
+                """
                     user_record = run_query(query, (username, password))
                     if user_record:
                         st.session_state.logged_in = True
