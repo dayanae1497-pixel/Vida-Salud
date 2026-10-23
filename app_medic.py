@@ -802,10 +802,10 @@ if not st.session_state.logged_in:
                 
                 if submit_login:
                     query = """
-                        SELECT u.*, r.descripcion as rol_nombre 
-                        FROM usuario u 
-                        JOIN rol r ON u.id_rol = r.id_rol 
-                        WHERE u.nombre_usuario = %s AND u.clave = %s
+                    SELECT u.*, r.descripcion as rol_nombre 
+                    FROM usuario u 
+                    JOIN rol r ON u.id_rol = r.id_rol 
+                    WHERE u.nombre_usuario = %s AND u.clave = %s
                     """
                     user_record = run_query(query, (username, password))
                     if user_record:
