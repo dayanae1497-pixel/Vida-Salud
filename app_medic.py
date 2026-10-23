@@ -876,10 +876,11 @@ if selected_menu == "🏠 Inicio":
             
             id_med_seleccionado = medico_dict_h[medico_seleccionado]
             
-            citas_ocupadas_query = """
-                SELECT id_horario 
-                FROM cita_medica 
-                WHERE id_medico = %s AND COALESCE(estado_cita, 'Pendiente') = 'Pendiente'
+            citas_ocupadas_query = 
+            """
+             SELECT id_horario 
+             FROM cita_medica 
+             WHERE id_medico = %s AND COALESCE(estado_cita, 'Pendiente') = 'Pendiente'
             """
             citas_ocupadas = run_query(citas_ocupadas_query, (id_med_seleccionado,))
             ids_horarios_ocupados = [c['id_horario'] for c in citas_ocupadas] if citas_ocupadas else []
