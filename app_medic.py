@@ -450,7 +450,9 @@ if selected_menu == "🏠 Inicio":
             df_med.columns = ['Nombre', 'Apellido', 'Especialidad']
             st.dataframe(df_med, use_container_width=True)
             
-    wit title_style))
+    with tab_h:
+        medicos_list_h = run_query("SELECT id_medico, CONCAT(nombre, ' ', apellido) as medico FROM medicos")
+
     elements.append(Paragraph(f"<b>Fecha de Cierre:</b> {date.today()} | <b>Estado:</b> Consolidado Inmutable", subtitle_style))
     elements.append(Spacer(1, 4))
     
