@@ -164,15 +164,23 @@ def render_header(subtitulo="Portal de Acceso Restringido"):
             <h2 style="color: #15432A; margin: 5px 0 0 0; font-weight: 800; font-size: 26px; text-transform: uppercase;">{subtitulo}</h2>
         </div>
     """, unsafe_allow_html=True)
+import ssl
 
-# --- CONEXIÓN A LA BASE DE DATOS MYSQL ---
+# --- CONEXIÓN A LA BASE DE DATOS MYSQL EN AIVEN ---
 def init_connection():
+    # Configuración de contexto SSL requerido por Aiven
+    context = ssl.create_default_context()
+    context.check_hostname = False
+    context.verify_mode = ssl.CERT_NONE  # O puedes cargar tu certificado CA si lo deseas
+
     return pymysql.connect(
-        host="localhost",
-        user="root",
-        password="",
+        host="mysql-68077f9-viacrucis2026.d.aivencloud.com",
+        user="avnadmin",
+        password="AVNS_ytphqSAjobNIHWjlbex",
         database="sistema_medico_db",
-        cursorclass=pymysql.cursors.DictCursor
+        port=18358,
+        cursorclass=pymysql.cursors.DictCursor,
+        ssl=context
     )
 
 def run_query(query, params=None, fetch=True):
@@ -190,8 +198,9 @@ def run_query(query, params=None, fetch=True):
                 connection.close()
                 return last_id
     except Exception as e:
-        st.error(f"Error en la base de datos: {e}")
+        st.error(f"Error en la base de datos remota: {e}")
         return None
+
 
 # --- VERIFICACIÓN SEGURA DE COLUMNAS ---
 def asegurar_columnas_sistema():
