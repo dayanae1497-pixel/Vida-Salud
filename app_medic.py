@@ -486,7 +486,7 @@ if selected_menu == "🏠 Inicio":
 
     doc.build(elements)
     buffer.seek(0)
-    return buffer
+        return buffer
 
 def generar_pdf_reporte(titulo, df):
     buffer = io.BytesIO()
