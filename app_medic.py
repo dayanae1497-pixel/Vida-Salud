@@ -1008,10 +1008,10 @@ elif selected_menu == "📋 Agendar Cita":
 
         btn_registrar = st.form_submit_button("REGISTRAR CITA Y PAGO", use_container_width=True)
 
-           if btn_registrar:
-                if moneda_pago == "Bolívares (VES)" and not comprobante_ves:
+        if btn_registrar:
+            if moneda_pago == "Bolívares (VES)" and not comprobante_ves:
                     st.error("¡Atención! Para pagos en bolívares debe ingresar la referencia.")
-                else:
+            else:
                     conflicto = run_query("SELECT * FROM cita_medica WHERE id_horario = %s AND (id_medico = %s OR id_consultorio = %s) AND COALESCE(estado_cita, 'Pendiente') = 'Pendiente'", (data['id_hor'], data['id_med'], data['id_con']))
 
                     if conflicto:
