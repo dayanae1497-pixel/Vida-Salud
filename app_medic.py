@@ -470,7 +470,7 @@ if selected_menu == "🏠 Inicio":
     ]))
     elements.append(t_resumen)
     elements.append(Spacer(1, 6))
-
+ def generar_pdf_financiero():
     if not df_infraestructura.empty:
         headers_inf = [Paragraph(str(col), header_style) for col in df_infraestructura.columns.tolist()]
         data_inf = [headers_inf]
