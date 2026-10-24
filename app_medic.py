@@ -1006,9 +1006,9 @@ elif selected_menu == "📋 Agendar Cita":
            with col_m1: moneda_pago = st.selectbox("Moneda con la que Cancela", ["Dólares (USD)", "Pesos Colombianos (COP)", "Bolívares (VES)"])
            with col_m2: comprobante_ves = st.text_input("Número de Comprobante / Referencia")
 
-            btn_registrar = st.form_submit_button("REGISTRAR CITA Y PAGO", use_container_width=True)
+        btn_registrar = st.form_submit_button("REGISTRAR CITA Y PAGO", use_container_width=True)
 
-            if btn_registrar:
+           if btn_registrar:
                 if moneda_pago == "Bolívares (VES)" and not comprobante_ves:
                     st.error("¡Atención! Para pagos en bolívares debe ingresar la referencia.")
                 else:
