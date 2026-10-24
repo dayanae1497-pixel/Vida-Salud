@@ -905,14 +905,8 @@ if selected_menu == "🏠 Inicio":
                 st.info("No hay horarios configurados en el sistema.")
 
     with tab_e:
-        query_equipos_esp = """
-            SELECT 
-                eq.descripcion as 'Descripción del Equipo / Examen',
-                COALESCE(es.nombre_especialidad, 'General / Sin Asignar') as 'Especialidad Pertenece'
-            FROM equipo eq
-            LEFT JOIN especialidades es ON eq.id_especialidad = es.id_especialidad
-            ORDER BY es.nombre_especialidad, eq.descripcion
-        """
+        query_equipos_esp = "SELECT eq.descripcion as 'Descripción del Equipo / Examen', COALESCE(es.nombre_especialidad, 'General') as 'Especialidad' FROM equipo eq LEFT JOIN especialidades es ON eq.id_esp = es.id_esp ORDER BY es.nombre_especialidad, eq.descripcion"
+
         df_eq = pd.DataFrame(run_query(query_equipos_esp))
         if not df_eq.empty:
             st.dataframe(df_eq, use_container_width=True, hide_index=True)
