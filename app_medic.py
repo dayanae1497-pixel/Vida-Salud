@@ -883,16 +883,8 @@ if selected_menu == "🏠 Inicio":
             citas_ocupadas = run_query(citas_ocupadas_query, (id_med_seleccionado,))
             ids_horarios_ocupados = [c['id_horario'] for c in citas_ocupadas] if citas_ocupadas else []
             
-            horarios_query = """
-                SELECT 
-                    h.id_horario, 
-                    d.Descripción as dia, 
-                    CAST(h.hora_inicio AS CHAR) as hora_inicio, 
-                    CAST(h.hora_fin AS CHAR) as hora_fin 
-                FROM horario h 
-                JOIN dias d ON h.id_dia = d.id_dia
-                ORDER BY d.id_dia, h.hora_inicio
-            """
+            horarios_query = "SELECT h.id_horario, d.Descripción as dia, CAST(h.hora_inicio AS CHAR) as hora_inicio, CAST(h.hora_fin AS CHAR) as hora_fin FROM horario h JOIN dias d ON h.id_dia = d.id_dia ORDER BY d.id_dia, h.hora_inicio"
+
             todos_horarios = run_query(horarios_query)
             
             if todos_horarios:
