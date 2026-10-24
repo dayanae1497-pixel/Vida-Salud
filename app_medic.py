@@ -1018,12 +1018,7 @@ elif selected_menu == "📋 Agendar Cita":
                 if moneda_pago == "Bolívares (VES)" and not comprobante_ves:
                     st.error("¡Atención! Para pagos en bolívares debe ingresar la referencia.")
                 else:
-                    conflicto = run_query("""
-                        SELECT * FROM cita_medica 
-                        WHERE id_horario = %s 
-                          AND (id_medico = %s OR id_consultorio = %s)
-                          AND COALESCE(estado_cita, 'Pendiente') = 'Pendiente'
-                    """, (data['id_hor'], data['id_med'], data['id_con']))
+                    conflicto = run_query("SELECT * FROM cita_medica WHERE id_horario = %s AND (id_medico = %s OR id_consultorio = %s) AND COALESCE(estado_cita, 'Pendiente') = 'Pendiente'", (data['id_hor'], data['id_med'], data['id_con']))
 
                     if conflicto:
                         st.error("❌ ¡Error de Disponibilidad! Médico o Consultorio ocupados en este horario.")
@@ -1031,16 +1026,8 @@ elif selected_menu == "📋 Agendar Cita":
                         id_paciente = run_query("INSERT INTO paciente (nombre, apellido, edad, padecimiento) VALUES (%s, %s, %s, %s)", (data['nombre'], data['apellido'], data['edad'], data['padecimiento']), fetch=False)
                         comp_guardar = comprobante_ves if comprobante_ves else "N/A"
 
-                        query_insert_cita = """
-                            INSERT INTO cita_medica (
-                                id_paciente, id_medico, id_consultorio, id_horario, id_tasa, padecimiento,
-                                total_honorario_usd, total_honorario_cop,
-                                total_consultorio_usd, total_consultorio_cop,
-                                total_equipo_usd, total_equipo_cop,
-                                costo_total_usd, costo_total_cop, costo_total_ves,
-                                moneda_pago, comprobante, estado_pago, estado_cita
-                            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'Pendiente', 'Pendiente')
-                        """
+                        query_insert_cita = "INSERT INTO cita_medica (id_paciente, id_medico, id_consultorio, id_horario, id_tasa, padecimiento, total_honorario_usd, total_honorario_cop, total_consultorio_usd, total_consultorio_cop, total_equipo_usd, total_equipo_cop, costo_total_usd, costo_total_cop, costo_total_ves, moneda_pago, comprobante, estado_pago, estado_cita) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'Pendiente', 'Pendiente')"
+
                         run_query(query_insert_cita, (
                             id_paciente, data['id_med'], data['id_con'], data['id_hor'], data['id_tasa'], data['padecimiento'],
                             data['honorario_usd'], data['honorario_cop'],
