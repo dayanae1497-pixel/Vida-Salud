@@ -1051,28 +1051,8 @@ elif selected_menu == "📅 Citas Agendadas":
     tab_general, tab_doctor = st.tabs(["📋 Todas las Citas Pendientes", "👨‍⚕️ Citas Pendientes por Doctor"])
 
     with tab_general:
-        citas_esp_query = """
-            SELECT 
-                cm.id_cita, es.nombre_especialidad as especialidad,
-                CONCAT(p.nombre, ' ', p.apellido) as paciente,
-                CONCAT(m.nombre, ' ', m.apellido) as medico,
-                co.descripcion as consultorio,
-                CONCAT(d.Descripción, ' (', h.hora_inicio, ' - ', h.hora_fin, ')') as horario,
-                cm.costo_total_usd as total_usd, 
-                cm.costo_total_cop as total_cop,
-                cm.costo_total_ves as total_ves,
-                COALESCE(cm.moneda_pago, 'Dólares (USD)') as moneda_pago,
-                COALESCE(cm.estado_cita, 'Pendiente') as estado_cita
-            FROM cita_medica cm
-            JOIN paciente p ON cm.id_paciente = p.id_paciente
-            JOIN medicos m ON cm.id_medico = m.id_medico
-            JOIN especialidades es ON m.id_especialidad = es.id_especialidad
-            JOIN consultorio co ON cm.id_consultorio = co.id_consultorio
-            JOIN horario h ON cm.id_horario = h.id_horario
-            JOIN dias d ON h.id_dia = d.id_dia
-            WHERE COALESCE(cm.estado_cita, 'Pendiente') = 'Pendiente'
-            ORDER BY es.nombre_especialidad
-        """
+        citas_esp_query = "SELECT cm.id_cita, es.nombre_especialidad as especialidad, CONCAT(p.nombre, ' ', p.apellido) as paciente, CONCAT(m.nombre, ' ', m.apellido) as medico, co.descripcion as consultorio, CONCAT(d.Descripción, ' (', h.hora_inicio, ' - ', h.hora_fin, ')') as horario, cm.costo_total_usd as total_usd, cm.costo_total_cop as total_cop, cm.costo_total_ves as total_ves, COALESCE(cm.moneda_pago, 'Dólares (USD)') as moneda_pago, COALESCE(cm.estado_cita, 'Pendiente') as estado_cita FROM cita_medica cm JOIN paciente p ON cm.id_paciente = p.id_paciente JOIN medicos m ON cm.id_medico = m.id_medico JOIN especialidades es ON m.id_especialidad = es.id_especialidad JOIN consultorio co ON cm.id_consultorio = co.id_consultorio JOIN horario h ON cm.id_horario = h.id_horario JOIN dias d ON h.id_dia = d.id_dia WHERE COALESCE(cm.estado_cita, 'Pendiente') = 'Pendiente' ORDER BY es.nombre_especialidad"
+    
         df_citas_esp = pd.DataFrame(run_query(citas_esp_query))
 
         if not df_citas_esp.empty:
@@ -1123,21 +1103,8 @@ elif selected_menu == "📅 Citas Agendadas":
             doc_sel_rep = st.selectbox("Seleccione el Doctor para Generar Reporte", list(med_dict_rep.keys()))
             id_doc_sel = med_dict_rep[doc_sel_rep]
 
-            query_doc_pendientes = """
-                SELECT 
-                    cm.id_cita as 'ID Cita',
-                    CONCAT(p.nombre, ' ', p.apellido) as 'Paciente',
-                    p.padecimiento as 'Motivo',
-                    co.descripcion as 'Consultorio',
-                    CONCAT(d.Descripción, ' (', h.hora_inicio, ' - ', h.hora_fin, ')') as 'Horario',
-                    cm.moneda_pago as 'Moneda'
-                FROM cita_medica cm
-                JOIN paciente p ON cm.id_paciente = p.id_paciente
-                JOIN consultorio co ON cm.id_consultorio = co.id_consultorio
-                JOIN horario h ON cm.id_horario = h.id_horario
-                JOIN dias d ON h.id_dia = d.id_dia
-                WHERE cm.id_medico = %s AND COALESCE(cm.estado_cita, 'Pendiente') = 'Pendiente'
-            """
+            query_doc_pendientes = "SELECT cm.id_cita as 'ID Cita', CONCAT(p.nombre, ' ', p.apellido) as 'Paciente', p.padecimiento as 'Motivo', co.descripcion as 'Consultorio', CONCAT(d.Descripción, ' (', h.hora_inicio, ' - ', h.hora_fin, ')') as 'Horario', cm.moneda_pago as 'Moneda' FROM cita_medica cm JOIN paciente p ON cm.id_paciente = p.id_paciente JOIN consultorio co ON cm.id_consultorio = co.id_consultorio JOIN horario h ON cm.id_horario = h.id_horario JOIN dias d ON h.id_dia = d.id_dia WHERE cm.id_medico = %s AND COALESCE(cm.estado_cita, 'Pendiente') = 'Pendiente'"
+
             df_doc_pendientes = pd.DataFrame(run_query(query_doc_pendientes, (id_doc_sel,)))
 
             if not df_doc_pendientes.empty:
@@ -1169,24 +1136,8 @@ elif selected_menu == "📜 Historial de Citas":
             pac_dict = {p['paciente']: p['id_paciente'] for p in pacientes_list}
             paciente_sel_hist = st.selectbox("Seleccione Paciente para consultar historial:", list(pac_dict.keys()))
             
-            query_hist_pac = """
-                SELECT 
-                    cm.id_cita as 'ID',
-                    CONCAT(m.nombre, ' ', m.apellido) as 'Médico',
-                    co.descripcion as 'Consultorio',
-                    CONCAT(d.Descripción, ' (', h.hora_inicio, ' - ', h.hora_fin, ')') as 'Horario',
-                    p.padecimiento as 'Motivo',
-                    cm.estado_cita as 'Estado Cita',
-                    cm.costo_total_usd as 'Monto USD'
-                FROM cita_medica cm
-                JOIN paciente p ON cm.id_paciente = p.id_paciente
-                JOIN medicos m ON cm.id_medico = m.id_medico
-                JOIN consultorio co ON cm.id_consultorio = co.id_consultorio
-                JOIN horario h ON cm.id_horario = h.id_horario
-                JOIN dias d ON h.id_dia = d.id_dia
-                WHERE CONCAT(p.nombre, ' ', p.apellido) = %s
-                ORDER BY cm.id_cita DESC
-            """
+            query_hist_pac = "SELECT cm.id_cita as 'ID', CONCAT(m.nombre, ' ', m.apellido) as 'Médico', co.descripcion as 'Consultorio', CONCAT(d.Descripción, ' (', h.hora_inicio, ' - ', h.hora_fin, ')') as 'Horario', p.padecimiento as 'Motivo', cm.estado_cita as 'Estado Cita', cm.costo_total_usd as 'Monto USD' FROM cita_medica cm JOIN paciente p ON cm.id_paciente = p.id_paciente JOIN medicos m ON cm.id_medico = m.id_medico JOIN consultorio co ON cm.id_consultorio = co.id_consultorio JOIN horario h ON cm.id_horario = h.id_horario JOIN dias d ON h.id_dia = d.id_dia WHERE CONCAT(p.nombre, ' ', p.apellido) = %s ORDER BY cm.id_cita DESC"
+
             df_hist_p = pd.DataFrame(run_query(query_hist_pac, (paciente_sel_hist,)))
             if not df_hist_p.empty:
                 st.dataframe(df_hist_p, use_container_width=True, hide_index=True)
@@ -1199,23 +1150,8 @@ elif selected_menu == "📜 Historial de Citas":
             med_dict_hist = {m['medico']: m['id_medico'] for m in medicos_hist}
             medico_sel_hist = st.selectbox("Seleccione Doctor para consultar historial:", list(med_dict_hist.keys()))
             
-            query_hist_doc = """
-                SELECT 
-                    cm.id_cita as 'ID Cita',
-                    CONCAT(p.nombre, ' ', p.apellido) as 'Paciente',
-                    co.descripcion as 'Consultorio',
-                    CONCAT(d.Descripción, ' (', h.hora_inicio, ' - ', h.hora_fin, ')') as 'Horario',
-                    p.padecimiento as 'Motivo Consulta',
-                    cm.estado_cita as 'Estado Cita',
-                    cm.estado_pago as 'Estado Pago'
-                FROM cita_medica cm
-                JOIN paciente p ON cm.id_paciente = p.id_paciente
-                JOIN consultorio co ON cm.id_consultorio = co.id_consultorio
-                JOIN horario h ON cm.id_horario = h.id_horario
-                JOIN dias d ON h.id_dia = d.id_dia
-                WHERE cm.id_medico = %s
-                ORDER BY cm.id_cita DESC
-            """
+            query_hist_doc = "SELECT cm.id_cita as 'ID Cita', CONCAT(p.nombre, ' ', p.apellido) as 'Paciente', co.descripcion as 'Consultorio', CONCAT(d.Descripción, ' (', h.hora_inicio, ' - ', h.hora_fin, ')') as 'Horario', p.padecimiento as 'Motivo Consulta', cm.estado_cita as 'Estado Cita', cm.estado_pago as 'Estado Pago' FROM cita_medica cm JOIN paciente p ON cm.id_paciente = p.id_paciente JOIN consultorio co ON cm.id_consultorio = co.id_consultorio JOIN horario h ON cm.id_horario = h.id_horario JOIN dias d ON h.id_dia = d.id_dia WHERE cm.id_medico = %s ORDER BY cm.id_cita DESC"
+
             df_hist_d = pd.DataFrame(run_query(query_hist_doc, (med_dict_hist[medico_sel_hist],)))
             if not df_hist_d.empty:
                 st.dataframe(df_hist_d, use_container_width=True, hide_index=True)
@@ -1230,33 +1166,8 @@ elif selected_menu == "📊 Panel Administrativo" and st.session_state.role == '
 
     tab_admin1, tab_baremo = st.tabs(["💰 Auditoría y Cierre de Ciclo", "⚖️ Balance General"])
 
-    citas_query = """
-        SELECT 
-            cm.id_cita, 
-            CONCAT(p.nombre, ' ', p.apellido) as paciente,
-            CONCAT(m.nombre, ' ', m.apellido) as medico, 
-            co.descripcion as consultorio,
-            COALESCE(eq.descripcion, 'Consulta General') as servicio_examen,
-            CONCAT(d.Descripción, ' (', h.hora_inicio, ' - ', h.hora_fin, ')') as horario,
-            COALESCE(cm.moneda_pago, 'Dólares (USD)') as moneda_pago,
-            COALESCE(cm.comprobante, 'N/A') as comprobante,
-            cm.costo_total_usd,
-            cm.costo_total_cop,
-            cm.costo_total_ves,
-            COALESCE(NULLIF(cm.total_honorario_usd, 0), m.honorario_usd) as honorarios_medicos_usd,
-            COALESCE(NULLIF(cm.total_honorario_cop, 0), m.honorario_usd * 3100.0) as honorarios_medicos_cop,
-            (cm.costo_total_usd - COALESCE(NULLIF(cm.total_honorario_usd, 0), m.honorario_usd)) as ingresos_clinica_usd,
-            ((cm.costo_total_usd - COALESCE(NULLIF(cm.total_honorario_usd, 0), m.honorario_usd)) * 3100.0) as ingresos_clinica_cop
-        FROM cita_medica cm
-        JOIN paciente p ON cm.id_paciente = p.id_paciente
-        JOIN medicos m ON cm.id_medico = m.id_medico
-        JOIN consultorio co ON cm.id_consultorio = co.id_consultorio
-        JOIN horario h ON cm.id_horario = h.id_horario
-        JOIN dias d ON h.id_dia = d.id_dia
-        LEFT JOIN examen_esp ee ON co.id_consultorio = ee.id_consultorio
-        LEFT JOIN equipo eq ON ee.id_equipo = eq.id_equipo
-        WHERE cm.estado_pago = 'Pendiente'
-    """
+    citas_query = "SELECT cm.id_cita, CONCAT(p.nombre, ' ', p.apellido) as paciente, CONCAT(m.nombre, ' ', m.apellido) as medico, co.descripcion as consultorio, COALESCE(eq.descripcion, 'Consulta General') as servicio_examen, CONCAT(d.Descripción, ' (', h.hora_inicio, ' - ', h.hora_fin, ')') as horario, COALESCE(cm.moneda_pago, 'Dólares (USD)') as moneda_pago, COALESCE(cm.comprobante, 'N/A') as comprobante, cm.costo_total_usd, cm.costo_total_cop, cm.costo_total_ves, COALESCE(NULLIF(cm.total_honorario_usd, 0), m.honorario_usd) as honorarios_medicos_usd, COALESCE(NULLIF(cm.total_honorario_cop, 0), m.honorario_usd * 3100.0) as honorarios_medicos_cop, (cm.costo_total_usd - COALESCE(NULLIF(cm.total_honorario_usd, 0), m.honorario_usd)) as ingresos_clinica_usd, ((cm.costo_total_usd - COALESCE(NULLIF(cm.total_honorario_usd, 0), m.honorario_usd)) * 3100.0) as ingresos_clinica_cop FROM cita_medica cm JOIN paciente p ON cm.id_paciente = p.id_paciente JOIN medicos m ON cm.id_medico = m.id_medico JOIN consultorio co ON cm.id_consultorio = co.id_consultorio JOIN horario h ON cm.id_horario = h.id_horario JOIN dias d ON h.id_dia = d.id_dia LEFT JOIN examen_esp ee ON co.id_consultorio = ee.id_consultorio LEFT JOIN equipo eq ON ee.id_equipo = eq.id_equipo WHERE cm.estado_pago = 'Pendiente'"
+              
     df_citas = pd.DataFrame(run_query(citas_query))
 
     with tab_admin1:
