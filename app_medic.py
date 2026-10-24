@@ -945,10 +945,8 @@ elif selected_menu == "📋 Agendar Cita":
         st.markdown("<p style='color: #15432A; font-weight: bold; margin:0;'>Seleccione Médico</p>", unsafe_allow_html=True)
         medico_sel = st.selectbox("Seleccione Médico", options=list(medico_dict.keys()), key="c_medico", label_visibility="collapsed")
 
-    horarios_list = run_query("""
-        SELECT h.id_horario, d.Descripción as dia, h.hora_inicio, h.hora_fin 
-        FROM horario h JOIN dias d ON h.id_dia = d.id_dia
-    """)
+    horarios_list = run_query("SELECT h.id_horario, d.Descripción as dia, h.hora_inicio, h.hora_fin FROM horario h JOIN dias d ON h.id_dia = d.id_dia")
+
     horario_dict = {f"{h['dia']} [{h['hora_inicio']} - {h['hora_fin']}]": h['id_horario'] for h in horarios_list}
     with col_s2: 
         st.markdown("<p style='color: #15432A; font-weight: bold; margin:0;'>Seleccione Horario</p>", unsafe_allow_html=True)
