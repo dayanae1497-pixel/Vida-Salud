@@ -922,7 +922,7 @@ elif selected_menu == "📊 Blance General" and st.session_state.role == 'Admini
         # Generar el PDF con el detalle de las citas en lugar del baremo
         pdf_master_buffer = generar_pdf_auditoria_master(df_mostrar, totales_dict)
 
-        col_c1, = st.columns(2)
+        col_c1, col_c2= st.columns(2)
         with col_c1:
             st.download_button(label="📄 Descargar PDF Balance Histórico Completo", data=pdf_master_buffer, file_name=f"balance_historico_{date.today()}.pdf", mime="application/pdf", use_container_width=True)
     
