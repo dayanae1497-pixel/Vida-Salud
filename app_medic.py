@@ -420,6 +420,7 @@ st.sidebar.markdown(f"""
 menu_options = ["🏠 Inicio", "📋 Agendar Cita", "📅 Citas Agendadas", "📜 Historial y Citas Anteriores"]
 if st.session_state.role == 'Administrativo':
     menu_options.append("📊 Panel Administrativo (Baremo / Balance)")
+    menu_options.append("⚙️ Gestión de Baremo, Médicos y Equipos")
     menu_options.append("💰 Pago a Médicos")
 
 menu_options.append("🔒 Cerrar Sesión")
@@ -744,7 +745,7 @@ elif selected_menu == "📅 Citas Agendadas":
         st.info("🎉 ¡No hay citas pendientes!")
 
 # ------------------------------------------
-# MÓDULO NUEVO: HISTORIAL Y CITAS ANTERIORES (POR PACIENTE Y DOCTOR)
+# MÓDULO: HISTORIAL Y CITAS ANTERIORES
 # ------------------------------------------
 elif selected_menu == "📜 Historial y Citas Anteriores":
     st.markdown("<h1 style='color: #15432A !important; font-size: 32px; font-weight: 900;'>Historial de Citas y Citas Anteriores</h1>", unsafe_allow_html=True)
@@ -798,7 +799,6 @@ elif selected_menu == "📜 Historial y Citas Anteriores":
             if not df_hist_doc.empty:
                 st.dataframe(df_hist_doc, use_container_width=True, hide_index=True)
                 
-                # Reporte de citas pendientes específico por doctor solicitado
                 pdf_doc = generar_pdf_reporte(f"Historial y Citas - Dr(a). {med_sel}", df_hist_doc)
                 st.download_button(
                     label=f"📄 Descargar Reporte de Citas del Dr(a). {med_sel} en PDF",
@@ -920,7 +920,130 @@ elif selected_menu == "📊 Panel Administrativo (Baremo / Balance)" and st.sess
         st.info("🎉 ¡No hay operaciones pendientes en el balance!")
 
 # ------------------------------------------
-# MÓDULO 5: PAGO A MÉDICOS (CON FIRMA EN RECIBO)
+# MÓDULO 5: GESTIÓN DE BAREMO, MÉDICOS Y EQUIPOS (NUEVO)
+# ------------------------------------------
+elif selected_menu == "⚙️ Gestión de Baremo, Médicos y Equipos" and st.session_state.role == 'Administrativo':
+    st.markdown("<h1 style='color: #15432A !important; font-size: 32px; font-weight: 900;'>Gestión del Baremo, Médicos y Equipos</h1>", unsafe_allow_html=True)
+    
+    tab_gm, tab_gc, tab_geq = st.tabs(["👨‍⚕️ Gestionar Médicos", "🏥 Costos de Consultorios", "🔬 Equipos y Exámenes"])
+
+    # --- PESTAÑA 1: GESTIÓN DE MÉDICOS ---
+    with tab_gm:
+        st.subheader("Agregar Nuevo Médico Especialista")
+        with st.form("form_nuevo_medico"):
+            col_mn1, col_mn2 = st.columns(2)
+            with col_mn1:
+                n_nombre = st.text_input("Nombre del Médico")
+                n_honorario = st.number_input("Honorario por Consulta (USD)", min_value=0.0, value=20.0, step=5.0)
+            with col_mn2:
+                n_apellido = st.text_input("Apellido del Médico")
+                
+                # Cargar especialidades
+                esp_list = run_query("SELECT id_especialidad, nombre_especialidad FROM especialidades")
+                esp_dict = {e['nombre_especialidad']: e['id_especialidad'] for e in esp_list} if esp_list else {}
+                n_esp_str = st.selectbox("Especialidad", options=list(esp_dict.keys()) if esp_dict else ["General"])
+            
+            btn_add_med = st.form_submit_button("REGISTRAR NUEVO MÉDICO", use_container_width=True)
+            if btn_add_med:
+                if n_nombre and n_apellido and esp_dict:
+                    id_esp_val = esp_dict[n_esp_str]
+                    run_query(
+                        "INSERT INTO medicos (nombre, apellido, id_especialidad, honorario_usd) VALUES (%s, %s, %s, %s)",
+                        (n_nombre, n_apellido, id_esp_val, n_honorario), fetch=False
+                    )
+                    st.success(f"¡Dr(a). {n_nombre} {n_apellido} registrado con éxito!")
+                    st.rerun()
+                else:
+                    st.error("Por favor complete todos los campos.")
+
+        st.markdown("---")
+        st.subheader("Modificar Honorarios o Dar de Baja (Renuncia)")
+        meds_existentes = run_query("SELECT m.id_medico, CONCAT(m.nombre, ' ', m.apellido, ' (', e.nombre_especialidad, ')') as medico_info, m.honorario_usd FROM medicos m JOIN especialidades e ON m.id_especialidad = e.id_especialidad")
+        if meds_existentes:
+            med_dict_mod = {m['medico_info']: m['id_medico'] for m in meds_existentes}
+            med_sel_mod = st.selectbox("Seleccione Médico a Editar/Eliminar", options=list(med_dict_mod.keys()))
+            id_m_mod = med_dict_mod[med_sel_mod]
+            
+            actual_hon = [m['honorario_usd'] for m in meds_existentes if m['id_medico'] == id_m_mod][0]
+            
+            with st.form("form_mod_medico"):
+                nuevo_hon = st.number_input("Actualizar Honorario (USD)", value=float(actual_hon), step=5.0)
+                col_bm1, col_bm2 = st.columns(2)
+                with col_bm1:
+                    btn_upd_med = st.form_submit_button("ACTUALIZAR HONORARIO", use_container_width=True)
+                with col_bm2:
+                    btn_del_med = st.form_submit_button("ELIMINAR / DAR DE BAJA", use_container_width=True)
+                
+                if btn_upd_med:
+                    run_query("UPDATE medicos SET honorario_usd = %s WHERE id_medico = %s", (nuevo_hon, id_m_mod), fetch=False)
+                    st.success("¡Honorario actualizado correctamente!")
+                    st.rerun()
+                
+                if btn_del_med:
+                    try:
+                        run_query("DELETE FROM medicos WHERE id_medico = %s", (id_m_mod,), fetch=False)
+                        st.success("¡Médico eliminado del sistema con éxito!")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"No se puede eliminar el médico porque tiene citas asociadas en el historial. (Prueba reasignándolas o manténlo inactivo).")
+
+    # --- PESTAÑA 2: COSTOS DE CONSULTORIOS ---
+    with tab_gc:
+        st.subheader("Baremo de Consultorios (Costos Operativos)")
+        consultorios_db = run_query("SELECT id_consultorio, descripcion, costo_usd FROM consultorio")
+        if consultorios_db:
+            df_cons = pd.DataFrame(consultorios_db)
+            df_cons.columns = ['ID', 'Descripción del Consultorio', 'Costo (USD)']
+            
+            edited_cons = st.data_editor(df_cons, use_container_width=True, hide_index=True)
+            if st.button("GUARDAR CAMBIOS EN CONSULTORIOS", use_container_width=True):
+                for index, row in edited_cons.iterrows():
+                    run_query("UPDATE consultorio SET costo_usd = %s WHERE id_consultorio = %s", (row['Costo (USD)'], row['ID']), fetch=False)
+                st.success("¡Costos de consultorios actualizados!")
+                st.rerun()
+
+    # --- PESTAÑA 3: EQUIPOS Y EXÁMENES ---
+    with tab_geq:
+        st.subheader("Registrar Nuevo Equipo o Examen Especializado")
+        with st.form("form_nuevo_equipo"):
+            col_eq1, col_eq2 = st.columns(2)
+            with col_eq1:
+                eq_desc = st.text_input("Nombre del Equipo / Examen")
+                eq_costo = st.number_input("Costo del Examen (USD)", min_value=0.0, value=30.0, step=5.0)
+            with col_eq2:
+                esp_list_eq = run_query("SELECT id_especialidad, nombre_especialidad FROM especialidades")
+                esp_dict_eq = {e['nombre_especialidad']: e['id_especialidad'] for e in esp_list_eq} if esp_list_eq else {}
+                eq_esp_str = st.selectbox("Especialidad Asociada", options=list(esp_dict_eq.keys()) if esp_dict_eq else ["General"])
+            
+            btn_add_eq = st.form_submit_button("AGREGAR NUEVO EQUIPO", use_container_width=True)
+            if btn_add_eq:
+                if eq_desc and esp_dict_eq:
+                    id_esp_eq = esp_dict_eq[eq_esp_str]
+                    run_query(
+                        "INSERT INTO equipo (descripcion, costo_usd, id_especialidad) VALUES (%s, %s, %s)",
+                        (eq_desc, eq_costo, id_esp_eq), fetch=False
+                    )
+                    st.success(f"¡Equipo '{eq_desc}' agregado con éxito al baremo!")
+                    st.rerun()
+                else:
+                    st.error("Complete los campos obligatorios.")
+
+        st.markdown("---")
+        st.subheader("Modificar Costos de Equipos Existentes")
+        equipos_db = run_query("SELECT id_equipo, descripcion, costo_usd FROM equipo")
+        if equipos_db:
+            df_eqs = pd.DataFrame(equipos_db)
+            df_eqs.columns = ['ID', 'Descripción del Equipo', 'Costo USD']
+            
+            edited_eqs = st.data_editor(df_eqs, use_container_width=True, hide_index=True)
+            if st.button("GUARDAR CAMBIOS EN EQUIPOS", use_container_width=True):
+                for index, row in edited_eqs.iterrows():
+                    run_query("UPDATE equipo SET costo_usd = %s WHERE id_equipo = %s", (row['Costo USD'], row['ID']), fetch=False)
+                st.success("¡Costos de equipos actualizados!")
+                st.rerun()
+
+# ------------------------------------------
+# MÓDULO 6: PAGO A MÉDICOS (CON FIRMA EN RECIBO)
 # ------------------------------------------
 elif selected_menu == "💰 Pago a Médicos" and st.session_state.role == 'Administrativo':
     st.markdown("<h1 style='color: #15432A !important; font-size: 32px; font-weight: 900;'>Pago a Médicos y Liquidación</h1>", unsafe_allow_html=True)
@@ -973,7 +1096,6 @@ elif selected_menu == "💰 Pago a Médicos" and st.session_state.role == 'Admin
             elementos.append(t_recibo)
             elements.append(Spacer(1, 20))
             
-            # Bloque de Firmas para el Recibo
             elements.append(Paragraph("__________________________________________             __________________________________________", normal))
             elements.append(Paragraph(f"Firma Autorizada / Administración                               Recibido Conforme: <b>{medico_pago_sel}</b>", normal))
             
