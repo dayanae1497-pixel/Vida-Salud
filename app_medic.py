@@ -1053,7 +1053,7 @@ elif selected_menu == "⚙️ Gestión de Baremo, Médicos y Equipos" and st.ses
 elif selected_menu == "💰 Pago a Médicos" and st.session_state.role == 'Administrativo':
     st.markdown("<h1 style='color: #15432A !important; font-size: 32px; font-weight: 900;'>Pago a Médicos e Historial de Liquidaciones</h1>", unsafe_allow_html=True)
 
-    tab_p1, tab_p2 = st.tabs(["💵 Procesar Liquidaciones Pendientes", "📜 Historial de Pagos Realizados (Descargable)"])
+    tab_p1, tab_p2 = st.tabs(["💵 Procesar Liquidaciones Pendientes", "📜 Historial de Pagos Realizados"])
 
     with tab_p1:
         med_query = """
