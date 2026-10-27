@@ -1126,7 +1126,7 @@ elif selected_menu == "💰 Pago a Médicos" and st.session_state.role == 'Admin
                 ]))
                 
                 elementos.append(t_recibo)
-                elements.append(Spacer(1, 20)
+                elements.append(Spacer(1, 20))
                 
                 elementos.append(Paragraph("__________________________________________             __________________________________________", normal))
                 elementos.append(Paragraph(f"Firma Autorizada / Administración                               Recibido Conforme: <b>{medico_pago_sel}</b>", normal))
