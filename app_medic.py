@@ -585,7 +585,9 @@ elif selected_menu == "📋 Agendar Cita":
 
     equipo_sel_id = None
     consultorio_asignado_id = None
+    id_med = medico_dict[medico_sel]
 
+    # --- ASIGNACIÓN CORRECTA DE CONSULTORIO SEGÚN LA BASE DE DATOS ---
     if tipo_servicio == "Examen Especializado":
         equipos_list = run_query("SELECT id_equipo, descripcion FROM equipo")
         equipo_dict = {eq['descripcion']: eq['id_equipo'] for eq in equipos_list}
@@ -593,10 +595,15 @@ elif selected_menu == "📋 Agendar Cita":
         equipo_sel_str = st.selectbox("Seleccione Equipo", options=list(equipo_dict.keys()), key="c_equipo_unico", label_visibility="collapsed")
         equipo_sel_id = equipo_dict[equipo_sel_str]
 
-        res_exam = run_query("SELECT id_consultorio FROM examen_esp WHERE id_equipo = %s", (equipo_sel_id,))
+        # Consultar la tabla examen_esp para obtener el consultorio asociado al equipo
+        res_exam = run_query("SELECT id_consultorio FROM examen_esp WHERE id_equipo = %s LIMIT 1", (equipo_sel_id,))
         consultorio_asignado_id = res_exam[0]['id_consultorio'] if res_exam else 1
     else:
-        res_cons = run_query("SELECT id_consultorio FROM consulta_normal LIMIT 1")
+        # Consultar la tabla consulta_normal para obtener el consultorio asociado al médico según el equipo/asignación
+        res_cons = run_query("SELECT id_consultorio FROM consulta_normal WHERE id_equipo = %s LIMIT 1", (id_med,))
+        if not res_cons:
+            # Búsqueda alternativa por índice si id_med coincide con el orden de consulta_normal
+            res_cons = run_query("SELECT id_consultorio FROM consulta_normal WHERE id_consulta = %s LIMIT 1", (id_med,))
         consultorio_asignado_id = res_cons[0]['id_consultorio'] if res_cons else 1
 
     st.markdown("<br>", unsafe_allow_html=True)
@@ -605,7 +612,6 @@ elif selected_menu == "📋 Agendar Cita":
             st.warning("Por favor ingrese el nombre y apellido del paciente.")
         else:
             id_tasa_activo, tasa_actual = actualizar_tasa_bcv_automatico()
-            id_med = medico_dict[medico_sel]
             id_hor = horario_dict[horario_sel]
 
             m_data = run_query("SELECT honorario_usd FROM medicos WHERE id_medico = %s", (id_med,))[0]
@@ -919,7 +925,6 @@ elif selected_menu == "📊 Panel Administrativo (Baremo / Balance)" and st.sess
             "medicos_cop": float(df_citas['honorarios_medicos_cop'].sum())
         }
 
-        # Generar el PDF con el detalle de las citas en lugar del baremo
         pdf_master_buffer = generar_pdf_auditoria_master(df_mostrar, totales_dict)
 
         col_c1, col_c2 = st.columns(2)
