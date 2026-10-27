@@ -232,6 +232,22 @@ def asegurar_columnas_sistema():
 
 asegurar_columnas_sistema()
 
+# --- TABLA DE HISTORIAL DE PAGOS A MÉDICOS (SI NO EXISTE) ---
+def asegurar_tabla_pagos_medicos():
+    query_create = """
+        CREATE TABLE IF NOT EXISTS pago_medico_historial (
+            id_pago INT AUTO_INCREMENT PRIMARY KEY,
+            id_medico INT,
+            fecha_pago DATE,
+            total_citas INT,
+            monto_pagado DECIMAL(10,2),
+            moneda VARCHAR(50)
+        )
+    """
+    run_query(query_create, fetch=False)
+
+asegurar_tabla_pagos_medicos()
+
 # --- FUNCIONES DE PDF CON FIRMA Y FORMATO ---
 def generar_pdf_auditoria_master(df_citas, df_dividendos, df_infraestructura, totales_dict):
     buffer = io.BytesIO()
@@ -801,7 +817,7 @@ elif selected_menu == "📜 Historial y Citas Anteriores":
                 
                 pdf_doc = generar_pdf_reporte(f"Historial y Citas - Dr(a). {med_sel}", df_hist_doc)
                 st.download_button(
-                    label=f"📄 Descargar Reporte de Citas del Dr(a). {med_sel} en PDF",
+                    label=f"📄 Descargar Reporte de Citas del Dr(a). {med_sel} in PDF",
                     data=pdf_doc,
                     file_name=f"citas_doctor_{id_doc_sel}.pdf",
                     mime="application/pdf",
@@ -829,12 +845,11 @@ elif selected_menu == "📜 Historial y Citas Anteriores":
             st.info("No hay registros en el historial.")
 
 # ------------------------------------------
-# MÓDULO 4: PANEL ADMINISTRATIVO (BALANCE GENERAL HISTÓRICO CON ESTADO)
+# MÓDULO 4: PANEL ADMINISTRATIVO (BALANCE GENERAL)
 # ------------------------------------------
 elif selected_menu == "📊 Panel Administrativo (Baremo / Balance)" and st.session_state.role == 'Administrativo':
     st.markdown("<h1 style='color: #15432A !important; font-size: 32px; font-weight: 900;'>Panel Administrativo - Balance General Histórico</h1>", unsafe_allow_html=True)
 
-    # Consulta que trae TODO el historial (Pendientes y Pagados)
     citas_query = """
         SELECT 
             cm.id_cita, 
@@ -880,7 +895,6 @@ elif selected_menu == "📊 Panel Administrativo (Baremo / Balance)" and st.sess
         
         st.dataframe(df_mostrar, use_container_width=True)
 
-        # Totales históricos generales de todo el sistema
         total_usd_real = float(df_citas['costo_total_usd'].sum())
         total_cop_real = float(df_citas['costo_total_cop'].sum())
         total_ves_real = float(df_citas['costo_total_ves'].sum())
@@ -1041,49 +1055,56 @@ elif selected_menu == "⚙️ Gestión de Baremo, Médicos y Equipos" and st.ses
                 st.rerun()
 
 # ------------------------------------------
-# MÓDULO 6: PAGO A MÉDICOS (HISTORIAL COMPLETO Y ESTADO DE PAGO)
+# MÓDULO 6: PAGO A MÉDICOS (HISTORIAL DE PAGOS Y DESCARGA)
 # ------------------------------------------
 elif selected_menu == "💰 Pago a Médicos" and st.session_state.role == 'Administrativo':
-    st.markdown("<h1 style='color: #15432A !important; font-size: 32px; font-weight: 900;'>Pago a Médicos y Liquidación Histórica</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='color: #15432A !important; font-size: 32px; font-weight: 900;'>Pago a Médicos e Historial de Liquidaciones</h1>", unsafe_allow_html=True)
 
-    # Selector para ver lo pendiente o el histórico completo de liquidaciones
-    modo_pago_vista = st.radio("Filtrar vista de pagos:", ["Solo Pendientes por Pagar", "Historial Completo (Pendientes y Pagados)"], horizontal=True)
+    tab_p1, tab_p2 = st.tabs(["💵 Procesar Liquidaciones Pendientes", "📜 Historial de Pagos Realizados (Descargable)"])
 
-    condicion_filtro = "WHERE cm.estado_pago = 'Pendiente'" if modo_pago_vista == "Solo Pendientes por Pagar" else ""
+    with tab_p1:
+        med_query = """
+            SELECT 
+                m.id_medico, 
+                CONCAT(m.nombre, ' ', m.apellido) as medico, 
+                COUNT(cm.id_cita) as total_consultas, 
+                SUM(COALESCE(NULLIF(cm.total_honorario_usd, 0), m.honorario_usd)) as acumulado_usd, 
+                SUM(COALESCE(NULLIF(cm.total_honorario_cop, 0), m.honorario_usd * 3100.0)) as acumulado_cop, 
+                SUM(cm.costo_total_ves) as acumulado_ves_aprox 
+            FROM medicos m 
+            JOIN cita_medica cm ON m.id_medico = cm.id_medico 
+            WHERE cm.estado_pago = 'Pendiente'
+            GROUP BY m.id_medico
+        """
+        df_div = pd.DataFrame(run_query(med_query))
 
-    med_query = f"""
-        SELECT 
-            m.id_medico, 
-            CONCAT(m.nombre, ' ', m.apellido) as medico, 
-            COUNT(cm.id_cita) as total_consultas, 
-            SUM(COALESCE(NULLIF(cm.total_honorario_usd, 0), m.honorario_usd)) as acumulado_usd, 
-            SUM(COALESCE(NULLIF(cm.total_honorario_cop, 0), m.honorario_usd * 3100.0)) as acumulado_cop, 
-            SUM(cm.costo_total_ves) as acumulado_ves_aprox 
-        FROM medicos m 
-        JOIN cita_medica cm ON m.id_medico = cm.id_medico 
-        {condicion_filtro}
-        GROUP BY m.id_medico
-    """
-    df_div = pd.DataFrame(run_query(med_query))
+        if not df_div.empty:
+            df_div.columns = ['ID Médico', 'Médico Especialista', 'Total Citas', 'Pendiente (USD)', 'Pendiente (COP)', 'Pendiente (VES)']
+            st.dataframe(df_div, use_container_width=True)
 
-    if not df_div.empty:
-        df_div.columns = ['ID Médico', 'Médico Especialista', 'Total Citas', 'Acumulado (USD)', 'Acumulado (COP)', 'Acumulado (VES)']
-        st.dataframe(df_div, use_container_width=True)
-
-        if modo_pago_vista == "Solo Pendientes por Pagar":
-            medico_pago_sel = st.selectbox("Seleccione el Médico a liquidar", df_div['Médico Especialista'].tolist())
+            medico_pago_sel = st.selectbox("Seleccione el Médico a liquidar", df_div['Médico Especialista'].tolist(), key="sel_med_liq")
             row_medico = df_div[df_div['Médico Especialista'] == medico_pago_sel].iloc[0]
             id_med_sel = row_medico['ID Médico']
-            monto_usd = row_medico['Acumulado (USD)']
-            monto_cop = row_medico['Acumulado (COP)']
-            monto_ves = row_medico['Acumulado (VES)']
+            monto_usd = row_medico['Pendiente (USD)']
+            monto_cop = row_medico['Pendiente (COP)']
+            monto_ves = row_medico['Pendiente (VES)']
+            total_citas_liq = int(row_medico['Total Citas'])
 
-            moneda_entrega_medico = st.selectbox("Seleccione la moneda de cancelación", ["Dólares (USD)", "Pesos Colombianos (COP)", "Bolívares (VES)"])
+            moneda_entrega_medico = st.selectbox("Seleccione la moneda de cancelación", ["Dólares (USD)", "Pesos Colombianos (COP)", "Bolívares (VES)"], key="mon_liq")
             
             if st.button("PROCESAR LIQUIDACIÓN Y GENERAR RECIBO", use_container_width=True):
                 citas_detalle_query = "SELECT cm.id_cita as ID, CONCAT(p.nombre, ' ', p.apellido) as Paciente, co.descripcion as Consultorio, CONCAT(d.Descripción, ' (', h.hora_inicio, ')') as Horario, COALESCE(NULLIF(cm.total_honorario_usd, 0), m.honorario_usd) as Hon_USD, COALESCE(NULLIF(cm.total_honorario_cop, 0), m.honorario_usd * 3100.0) as Hon_COP, cm.costo_total_ves as Hon_VES FROM cita_medica cm JOIN paciente p ON cm.id_paciente = p.id_paciente JOIN medicos m ON cm.id_medico = m.id_medico JOIN consultorio co ON cm.id_consultorio = co.id_consultorio JOIN horario h ON cm.id_horario = h.id_horario JOIN dias d ON h.id_dia = d.id_dia WHERE cm.id_medico = %s AND cm.estado_pago = 'Pendiente'"
                 df_detalles = pd.DataFrame(run_query(citas_detalle_query, (id_med_sel,)))
+                
+                # Marcar como pagado
                 run_query("UPDATE cita_medica SET estado_pago = 'Pagado' WHERE id_medico = %s AND estado_pago = 'Pendiente'", (id_med_sel,), fetch=False)
+                
+                # Registrar en el historial de pagos
+                monto_a_guardar = monto_usd if moneda_entrega_medico == "Dólares (USD)" else (monto_cop if moneda_entrega_medico == "Pesos Colombianos (COP)" else monto_ves)
+                run_query(
+                    "INSERT INTO pago_medico_historial (id_medico, fecha_pago, total_citas, monto_pagado, moneda) VALUES (%s, %s, %s, %s, %s)",
+                    (id_med_sel, date.today(), total_citas_liq, monto_a_guardar, moneda_entrega_medico), fetch=False
+                )
                 
                 st.success(f"¡Pago a {medico_pago_sel} procesado con éxito!")
 
@@ -1112,12 +1133,41 @@ elif selected_menu == "💰 Pago a Médicos" and st.session_state.role == 'Admin
                 elementos.append(t_recibo)
                 elements.append(Spacer(1, 20))
                 
-                elements.append(Paragraph("__________________________________________             __________________________________________", normal))
-                elements.append(Paragraph(f"Firma Autorizada / Administración                               Recibido Conforme: <b>{medico_pago_sel}</b>", normal))
+                elementos.append(Paragraph("__________________________________________             __________________________________________", normal))
+                elementos.append(Paragraph(f"Firma Autorizada / Administración                               Recibido Conforme: <b>{medico_pago_sel}</b>", normal))
                 
                 doc_recibo.build(elementos)
                 buffer_recibo.seek(0)
                 
                 st.download_button(label="📥 Descargar Recibo con Firma (PDF)", data=buffer_recibo, file_name=f"recibo_pago_{id_med_sel}.pdf", mime="application/pdf", use_container_width=True)
-    else:
-        st.info("🎉 ¡No hay registros de pagos pendientes bajo este filtro!")
+        else:
+            st.info("🎉 ¡No hay dividendos pendientes por liquidar!")
+
+    with tab_p2:
+        st.subheader("Historial Registrado de Pagos Realizados")
+        historial_pagos_query = """
+            SELECT 
+                p.id_pago as ID,
+                CONCAT(m.nombre, ' ', m.apellido) as 'Médico Especialista',
+                p.fecha_pago as 'Fecha de Pago',
+                p.total_citas as 'Citas Pagadas',
+                p.monto_pagado as 'Monto Pagado',
+                p.moneda as 'Moneda de Pago'
+            FROM pago_medico_historial p
+            JOIN medicos m ON p.id_medico = m.id_medico
+            ORDER BY p.id_pago DESC
+        """
+        df_hist_pagos = pd.DataFrame(run_query(historial_pagos_query))
+        if not df_hist_pagos.empty:
+            st.dataframe(df_hist_pagos, use_container_width=True, hide_index=True)
+
+            pdf_historial_pagos = generar_pdf_reporte("Historial de Pagos a Médicos", df_hist_pagos)
+            st.download_button(
+                label="📄 Descargar Historial de Pagos en PDF",
+                data=pdf_historial_pagos,
+                file_name=f"historial_pagos_medicos_{date.today()}.pdf",
+                mime="application/pdf",
+                use_container_width=True
+            )
+        else:
+            st.info("Aún no se han registrado liquidaciones históricas en el sistema.")
