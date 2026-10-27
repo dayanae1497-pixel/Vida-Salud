@@ -1128,8 +1128,8 @@ elif selected_menu == "💰 Pago a Médicos" and st.session_state.role == 'Admin
                 elementos.append(t_recibo)
                 elementos.append(Spacer(1, 20))
                 
-                elementos.append(Paragraph("__________________________________________             __________________________________________", normal))
-                elementos.append(Paragraph(f"Firma Autorizada / Administración                               Recibido Conforme: <b>{medico_pago_sel}</b>", normal))
+                elementos.append(Paragraph("__________________________________________                                        __________________________________________", normal))
+                elementos.append(Paragraph(f"Firma Autorizada / Administración                                                Recibido Conforme: <b>{medico_pago_sel}</b>", normal))
                 
                 doc_recibo.build(elementos)
                 buffer_recibo.seek(0)
