@@ -250,7 +250,7 @@ def generar_pdf_auditoria_master(df_citas, df_dividendos, df_infraestructura, to
     
     resumen_data = [
         [Paragraph("Concepto / Moneda", header_style), Paragraph("Total USD", header_style), Paragraph("Total COP", header_style), Paragraph("Total VES", header_style)],
-        [Paragraph("Balance Real Caja", cell_style), Paragraph(f"${totales_dict['usd']:,.2f}", cell_style), Paragraph(f"${totales_dict['cop']:,.2f}", cell_style), Paragraph(f"Bs. {totales_dict['ves']:,.2f}", cell_style)],
+        [Paragraph("Balance Histórico General", cell_style), Paragraph(f"${totales_dict['usd']:,.2f}", cell_style), Paragraph(f"${totales_dict['cop']:,.2f}", cell_style), Paragraph(f"Bs. {totales_dict['ves']:,.2f}", cell_style)],
         [Paragraph("Ingresos Clínica (Consultorios + Equipos)", cell_style), Paragraph(f"${totales_dict['clinica_usd']:,.2f}", cell_style), Paragraph(f"${totales_dict['clinica_cop']:,.2f}", cell_style), Paragraph("-", cell_style)],
         [Paragraph("Honorarios Médicos (Egresos)", cell_style), Paragraph(f"${totales_dict['medicos_usd']:,.2f}", cell_style), Paragraph(f"${totales_dict['medicos_cop']:,.2f}", cell_style), Paragraph("-", cell_style)]
     ]
@@ -787,7 +787,7 @@ elif selected_menu == "📜 Historial y Citas Anteriores":
                 SELECT 
                     cm.id_cita as ID, CONCAT(p.nombre, ' ', p.apellido) as Paciente,
                     CONCAT(m.nombre, ' ', m.apellido) as Medico, co.descripcion as Consultorio,
-                    cm.padecimiento as Motivo, COALESCE(cm.estado_cita, 'Pendiente') as Estado, cm.costo_total_usd as 'Total USD'
+                    cm.padecimiento as Motivo, COALESCE(cm.estado_cita, 'Pendiente') as Estado, cm.estado_pago as Pago, cm.costo_total_usd as 'Total USD'
                 FROM cita_medica cm
                 JOIN paciente p ON cm.id_paciente = p.id_paciente
                 JOIN medicos m ON cm.id_medico = m.id_medico
@@ -815,7 +815,7 @@ elif selected_menu == "📜 Historial y Citas Anteriores":
             SELECT 
                 cm.id_cita as ID, CONCAT(p.nombre, ' ', p.apellido) as Paciente,
                 CONCAT(m.nombre, ' ', m.apellido) as Medico, co.descripcion as Consultorio,
-                COALESCE(cm.estado_cita, 'Pendiente') as Estado, cm.costo_total_usd as 'Total USD'
+                COALESCE(cm.estado_cita, 'Pendiente') as Estado, COALESCE(cm.estado_pago, 'Pendiente') as Pago, cm.costo_total_usd as 'Total USD'
             FROM cita_medica cm
             JOIN paciente p ON cm.id_paciente = p.id_paciente
             JOIN medicos m ON cm.id_medico = m.id_medico
@@ -829,11 +829,12 @@ elif selected_menu == "📜 Historial y Citas Anteriores":
             st.info("No hay registros en el historial.")
 
 # ------------------------------------------
-# MÓDULO 4: PANEL ADMINISTRATIVO (BAREMO / BALANCE GENERAL)
+# MÓDULO 4: PANEL ADMINISTRATIVO (BALANCE GENERAL HISTÓRICO CON ESTADO)
 # ------------------------------------------
 elif selected_menu == "📊 Panel Administrativo (Baremo / Balance)" and st.session_state.role == 'Administrativo':
-    st.markdown("<h1 style='color: #15432A !important; font-size: 32px; font-weight: 900;'>Panel Administrativo - Baremo y Balance General</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='color: #15432A !important; font-size: 32px; font-weight: 900;'>Panel Administrativo - Balance General Histórico</h1>", unsafe_allow_html=True)
 
+    # Consulta que trae TODO el historial (Pendientes y Pagados)
     citas_query = """
         SELECT 
             cm.id_cita, 
@@ -844,6 +845,7 @@ elif selected_menu == "📊 Panel Administrativo (Baremo / Balance)" and st.sess
             CONCAT(d.Descripción, ' (', h.hora_inicio, ' - ', h.hora_fin, ')') as horario,
             COALESCE(cm.moneda_pago, 'Dólares (USD)') as moneda_pago,
             COALESCE(cm.comprobante, 'N/A') as comprobante,
+            COALESCE(cm.estado_pago, 'Pendiente') as estado_pago,
             cm.costo_total_usd,
             cm.costo_total_cop,
             cm.costo_total_ves,
@@ -859,43 +861,44 @@ elif selected_menu == "📊 Panel Administrativo (Baremo / Balance)" and st.sess
         JOIN dias d ON h.id_dia = d.id_dia
         LEFT JOIN examen_esp ee ON co.id_consultorio = ee.id_consultorio
         LEFT JOIN equipo eq ON ee.id_equipo = eq.id_equipo
-        WHERE cm.estado_pago = 'Pendiente'
+        ORDER BY cm.id_cita DESC
     """
     df_citas = pd.DataFrame(run_query(citas_query))
 
     if not df_citas.empty:
         df_mostrar = df_citas[[
             'id_cita', 'paciente', 'medico', 'consultorio', 'servicio_examen', 'horario', 
-            'moneda_pago', 'comprobante', 'costo_total_usd', 'costo_total_cop', 'costo_total_ves',
+            'moneda_pago', 'comprobante', 'estado_pago', 'costo_total_usd', 'costo_total_cop', 'costo_total_ves',
             'honorarios_medicos_usd', 'honorarios_medicos_cop', 'ingresos_clinica_usd', 'ingresos_clinica_cop'
         ]].copy()
         
         df_mostrar.columns = [
             'ID', 'Paciente', 'Médico', 'Consultorio', 'Servicio / Examen', 'Horario', 
-            'Moneda', 'Ref', 'Total USD', 'Total COP', 'Total VES', 
+            'Moneda', 'Ref', 'Estado Pago', 'Total USD', 'Total COP', 'Total VES', 
             'Honorarios USD', 'Honorarios COP', 'Clínica USD', 'Clínica COP'
         ]
         
         st.dataframe(df_mostrar, use_container_width=True)
 
-        total_usd_real = float(df_citas[df_citas['moneda_pago'] == 'Dólares (USD)']['costo_total_usd'].sum())
-        total_cop_real = float(df_citas[df_citas['moneda_pago'] == 'Pesos Colombianos (COP)']['costo_total_cop'].sum())
-        total_ves_real = float(df_citas[df_citas['moneda_pago'] == 'Bolívares (VES)']['costo_total_ves'].sum())
+        # Totales históricos generales de todo el sistema
+        total_usd_real = float(df_citas['costo_total_usd'].sum())
+        total_cop_real = float(df_citas['costo_total_cop'].sum())
+        total_ves_real = float(df_citas['costo_total_ves'].sum())
 
         total_egresos_medicos_usd = float(df_citas['honorarios_medicos_usd'].sum())
         total_ingresos_clinica_usd = float(df_citas['ingresos_clinica_usd'].sum())
 
         st.markdown("---")
-        st.subheader("📈 Baremo y Balance General de Ingresos y Egresos")
+        st.subheader("📈 Balance General Histórico (Acumulado Total)")
         col_ba1, col_ba2, col_ba3 = st.columns(3)
-        with col_ba1: st.metric("Ingresos Totales (Caja)", f"${total_usd_real:,.2f} USD")
+        with col_ba1: st.metric("Ingresos Históricos Caja", f"${total_usd_real:,.2f} USD")
         with col_ba2: st.metric("Ingresos Netos Clínica", f"${total_ingresos_clinica_usd:,.2f} USD")
-        with col_ba3: st.metric("Egresos (Honorarios Médicos)", f"${total_egresos_medicos_usd:,.2f} USD")
+        with col_ba3: st.metric("Egresos Honorarios Médicos", f"${total_egresos_medicos_usd:,.2f} USD")
 
         infra_query = "SELECT descripcion as 'Descripción / Infraestructura', costo_usd as 'Costo USD', (costo_usd * 3100.0) as 'Costo COP' FROM consultorio UNION SELECT descripcion as 'Descripción / Infraestructura', costo_usd as 'Costo USD', (costo_usd * 3100.0) as 'Costo COP' FROM equipo"
         df_infraestructura = pd.DataFrame(run_query(infra_query))
 
-        med_div_query = "SELECT m.id_medico as 'ID', CONCAT(m.nombre, ' ', m.apellido) as 'Médico', COUNT(cm.id_cita) as 'Citas', SUM(COALESCE(NULLIF(cm.total_honorario_usd, 0), m.honorario_usd)) as 'Hon. USD', SUM(COALESCE(NULLIF(cm.total_honorario_cop, 0), m.honorario_usd * 3100.0)) as 'Hon. COP' FROM medicos m JOIN cita_medica cm ON m.id_medico = cm.id_medico WHERE cm.estado_pago = 'Pendiente' GROUP BY m.id_medico"
+        med_div_query = "SELECT m.id_medico as 'ID', CONCAT(m.nombre, ' ', m.apellido) as 'Médico', COUNT(cm.id_cita) as 'Citas', SUM(COALESCE(NULLIF(cm.total_honorario_usd, 0), m.honorario_usd)) as 'Hon. USD', SUM(COALESCE(NULLIF(cm.total_honorario_cop, 0), m.honorario_usd * 3100.0)) as 'Hon. COP' FROM medicos m JOIN cita_medica cm ON m.id_medico = cm.id_medico GROUP BY m.id_medico"
         df_div_cierre = pd.DataFrame(run_query(med_div_query))
 
         totales_dict = {
@@ -910,24 +913,23 @@ elif selected_menu == "📊 Panel Administrativo (Baremo / Balance)" and st.sess
 
         col_c1, col_c2 = st.columns(2)
         with col_c1:
-            st.download_button(label="📄 Descargar PDF Baremo y Auditoría Completa", data=pdf_master_buffer, file_name=f"balance_general_{date.today()}.pdf", mime="application/pdf", use_container_width=True)
+            st.download_button(label="📄 Descargar PDF Balance Histórico Completo", data=pdf_master_buffer, file_name=f"balance_historico_{date.today()}.pdf", mime="application/pdf", use_container_width=True)
         with col_c2:
             if st.button("🔄 EFECTUAR CIERRE DE CICLO", use_container_width=True):
                 run_query("UPDATE cita_medica SET estado_pago = 'Pagado' WHERE estado_pago = 'Pendiente'", fetch=False)
                 st.success("¡Cierre completado con éxito!")
                 st.rerun()
     else:
-        st.info("🎉 ¡No hay operaciones pendientes en el balance!")
+        st.info("🎉 ¡No hay operaciones registradas en el balance!")
 
 # ------------------------------------------
-# MÓDULO 5: GESTIÓN DE BAREMO, MÉDICOS Y EQUIPOS (NUEVO)
+# MÓDULO 5: GESTIÓN DE BAREMO, MÉDICOS Y EQUIPOS
 # ------------------------------------------
 elif selected_menu == "⚙️ Gestión de Baremo, Médicos y Equipos" and st.session_state.role == 'Administrativo':
     st.markdown("<h1 style='color: #15432A !important; font-size: 32px; font-weight: 900;'>Gestión del Baremo, Médicos y Equipos</h1>", unsafe_allow_html=True)
     
     tab_gm, tab_gc, tab_geq = st.tabs(["👨‍⚕️ Gestionar Médicos", "🏥 Costos de Consultorios", "🔬 Equipos y Exámenes"])
 
-    # --- PESTAÑA 1: GESTIÓN DE MÉDICOS ---
     with tab_gm:
         st.subheader("Agregar Nuevo Médico Especialista")
         with st.form("form_nuevo_medico"):
@@ -937,8 +939,6 @@ elif selected_menu == "⚙️ Gestión de Baremo, Médicos y Equipos" and st.ses
                 n_honorario = st.number_input("Honorario por Consulta (USD)", min_value=0.0, value=20.0, step=5.0)
             with col_mn2:
                 n_apellido = st.text_input("Apellido del Médico")
-                
-                # Cargar especialidades
                 esp_list = run_query("SELECT id_especialidad, nombre_especialidad FROM especialidades")
                 esp_dict = {e['nombre_especialidad']: e['id_especialidad'] for e in esp_list} if esp_list else {}
                 n_esp_str = st.selectbox("Especialidad", options=list(esp_dict.keys()) if esp_dict else ["General"])
@@ -985,9 +985,8 @@ elif selected_menu == "⚙️ Gestión de Baremo, Médicos y Equipos" and st.ses
                         st.success("¡Médico eliminado del sistema con éxito!")
                         st.rerun()
                     except Exception as e:
-                        st.error(f"No se puede eliminar el médico porque tiene citas asociadas en el historial. (Prueba reasignándolas o manténlo inactivo).")
+                        st.error(f"No se puede eliminar el médico porque tiene citas asociadas en el historial.")
 
-    # --- PESTAÑA 2: COSTOS DE CONSULTORIOS ---
     with tab_gc:
         st.subheader("Baremo de Consultorios (Costos Operativos)")
         consultorios_db = run_query("SELECT id_consultorio, descripcion, costo_usd FROM consultorio")
@@ -1002,7 +1001,6 @@ elif selected_menu == "⚙️ Gestión de Baremo, Médicos y Equipos" and st.ses
                 st.success("¡Costos de consultorios actualizados!")
                 st.rerun()
 
-    # --- PESTAÑA 3: EQUIPOS Y EXÁMENES ---
     with tab_geq:
         st.subheader("Registrar Nuevo Equipo o Examen Especializado")
         with st.form("form_nuevo_equipo"):
@@ -1043,65 +1041,83 @@ elif selected_menu == "⚙️ Gestión de Baremo, Médicos y Equipos" and st.ses
                 st.rerun()
 
 # ------------------------------------------
-# MÓDULO 6: PAGO A MÉDICOS (CON FIRMA EN RECIBO)
+# MÓDULO 6: PAGO A MÉDICOS (HISTORIAL COMPLETO Y ESTADO DE PAGO)
 # ------------------------------------------
 elif selected_menu == "💰 Pago a Médicos" and st.session_state.role == 'Administrativo':
-    st.markdown("<h1 style='color: #15432A !important; font-size: 32px; font-weight: 900;'>Pago a Médicos y Liquidación</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='color: #15432A !important; font-size: 32px; font-weight: 900;'>Pago a Médicos y Liquidación Histórica</h1>", unsafe_allow_html=True)
 
-    med_query = "SELECT m.id_medico, CONCAT(m.nombre, ' ', m.apellido) as medico, COUNT(cm.id_cita) as total_consultas, SUM(COALESCE(NULLIF(cm.total_honorario_usd, 0), m.honorario_usd)) as acumulado_usd, SUM(COALESCE(NULLIF(cm.total_honorario_cop, 0), m.honorario_usd * 3100.0)) as acumulado_cop, SUM(cm.costo_total_ves) as acumulado_ves_aprox FROM medicos m JOIN cita_medica cm ON m.id_medico = cm.id_medico WHERE cm.estado_pago = 'Pendiente' GROUP BY m.id_medico"
+    # Selector para ver lo pendiente o el histórico completo de liquidaciones
+    modo_pago_vista = st.radio("Filtrar vista de pagos:", ["Solo Pendientes por Pagar", "Historial Completo (Pendientes y Pagados)"], horizontal=True)
+
+    condicion_filtro = "WHERE cm.estado_pago = 'Pendiente'" if modo_pago_vista == "Solo Pendientes por Pagar" else ""
+
+    med_query = f"""
+        SELECT 
+            m.id_medico, 
+            CONCAT(m.nombre, ' ', m.apellido) as medico, 
+            COUNT(cm.id_cita) as total_consultas, 
+            SUM(COALESCE(NULLIF(cm.total_honorario_usd, 0), m.honorario_usd)) as acumulado_usd, 
+            SUM(COALESCE(NULLIF(cm.total_honorario_cop, 0), m.honorario_usd * 3100.0)) as acumulado_cop, 
+            SUM(cm.costo_total_ves) as acumulado_ves_aprox 
+        FROM medicos m 
+        JOIN cita_medica cm ON m.id_medico = cm.id_medico 
+        {condicion_filtro}
+        GROUP BY m.id_medico
+    """
     df_div = pd.DataFrame(run_query(med_query))
 
     if not df_div.empty:
-        df_div.columns = ['ID Médico', 'Médico Especialista', 'Total Citas Pendientes', 'Pendiente (USD)', 'Pendiente (COP)', 'Pendiente (VES)']
+        df_div.columns = ['ID Médico', 'Médico Especialista', 'Total Citas', 'Acumulado (USD)', 'Acumulado (COP)', 'Acumulado (VES)']
         st.dataframe(df_div, use_container_width=True)
 
-        medico_pago_sel = st.selectbox("Seleccione el Médico a liquidar", df_div['Médico Especialista'].tolist())
-        row_medico = df_div[df_div['Médico Especialista'] == medico_pago_sel].iloc[0]
-        id_med_sel = row_medico['ID Médico']
-        monto_usd = row_medico['Pendiente (USD)']
-        monto_cop = row_medico['Pendiente (COP)']
-        monto_ves = row_medico['Pendiente (VES)']
+        if modo_pago_vista == "Solo Pendientes por Pagar":
+            medico_pago_sel = st.selectbox("Seleccione el Médico a liquidar", df_div['Médico Especialista'].tolist())
+            row_medico = df_div[df_div['Médico Especialista'] == medico_pago_sel].iloc[0]
+            id_med_sel = row_medico['ID Médico']
+            monto_usd = row_medico['Acumulado (USD)']
+            monto_cop = row_medico['Acumulado (COP)']
+            monto_ves = row_medico['Acumulado (VES)']
 
-        moneda_entrega_medico = st.selectbox("Seleccione la moneda de cancelación", ["Dólares (USD)", "Pesos Colombianos (COP)", "Bolívares (VES)"])
-        
-        if st.button("PROCESAR LIQUIDACIÓN Y GENERAR RECIBO", use_container_width=True):
-            citas_detalle_query = "SELECT cm.id_cita as ID, CONCAT(p.nombre, ' ', p.apellido) as Paciente, co.descripcion as Consultorio, CONCAT(d.Descripción, ' (', h.hora_inicio, ')') as Horario, COALESCE(NULLIF(cm.total_honorario_usd, 0), m.honorario_usd) as Hon_USD, COALESCE(NULLIF(cm.total_honorario_cop, 0), m.honorario_usd * 3100.0) as Hon_COP, cm.costo_total_ves as Hon_VES FROM cita_medica cm JOIN paciente p ON cm.id_paciente = p.id_paciente JOIN medicos m ON cm.id_medico = m.id_medico JOIN consultorio co ON cm.id_consultorio = co.id_consultorio JOIN horario h ON cm.id_horario = h.id_horario JOIN dias d ON h.id_dia = d.id_dia WHERE cm.id_medico = %s AND cm.estado_pago = 'Pendiente'"
-            df_detalles = pd.DataFrame(run_query(citas_detalle_query, (id_med_sel,)))
-            run_query("UPDATE cita_medica SET estado_pago = 'Pagado' WHERE id_medico = %s AND estado_pago = 'Pendiente'", (id_med_sel,), fetch=False)
+            moneda_entrega_medico = st.selectbox("Seleccione la moneda de cancelación", ["Dólares (USD)", "Pesos Colombianos (COP)", "Bolívares (VES)"])
             
-            st.success(f"¡Pago a {medico_pago_sel} procesado con éxito!")
+            if st.button("PROCESAR LIQUIDACIÓN Y GENERAR RECIBO", use_container_width=True):
+                citas_detalle_query = "SELECT cm.id_cita as ID, CONCAT(p.nombre, ' ', p.apellido) as Paciente, co.descripcion as Consultorio, CONCAT(d.Descripción, ' (', h.hora_inicio, ')') as Horario, COALESCE(NULLIF(cm.total_honorario_usd, 0), m.honorario_usd) as Hon_USD, COALESCE(NULLIF(cm.total_honorario_cop, 0), m.honorario_usd * 3100.0) as Hon_COP, cm.costo_total_ves as Hon_VES FROM cita_medica cm JOIN paciente p ON cm.id_paciente = p.id_paciente JOIN medicos m ON cm.id_medico = m.id_medico JOIN consultorio co ON cm.id_consultorio = co.id_consultorio JOIN horario h ON cm.id_horario = h.id_horario JOIN dias d ON h.id_dia = d.id_dia WHERE cm.id_medico = %s AND cm.estado_pago = 'Pendiente'"
+                df_detalles = pd.DataFrame(run_query(citas_detalle_query, (id_med_sel,)))
+                run_query("UPDATE cita_medica SET estado_pago = 'Pagado' WHERE id_medico = %s AND estado_pago = 'Pendiente'", (id_med_sel,), fetch=False)
+                
+                st.success(f"¡Pago a {medico_pago_sel} procesado con éxito!")
 
-            buffer_recibo = io.BytesIO()
-            doc_recibo = SimpleDocTemplate(buffer_recibo, pagesize=landscape(letter), rightMargin=20, leftMargin=20, topMargin=25, bottomMargin=25)
-            elementos = []
-            styles = getSampleStyleSheet()
-            h1 = ParagraphStyle('H1', parent=styles['Heading1'], fontSize=12, textColor=colors.HexColor('#15432A'), spaceAfter=4)
-            normal = ParagraphStyle('Normal', parent=styles['Normal'], fontSize=8, textColor=colors.HexColor('#1F2926'), spaceAfter=3)
-            
-            elementos.append(Paragraph(f"<b>FARMAVIDA</b> - Comprobante de Pago de Honorarios Médicos", h1))
-            elementos.append(Paragraph(f"<b>Médico:</b> {medico_pago_sel} | <b>Fecha:</b> {date.today()}", normal))
-            elementos.append(Paragraph(f"<b>Moneda de Cancelación:</b> {moneda_entrega_medico}", normal))
-            elementos.append(Spacer(1, 5))
-            
-            data_tabla = [df_detalles.columns.tolist()] + df_detalles.astype(str).values.tolist()
-            data_tabla.append(["", "", "", "TOTALES:", f"${monto_usd:,.2f}", f"${monto_cop:,.2f}", f"Bs. {monto_ves:,.2f}"])
-            
-            t_recibo = Table(data_tabla)
-            t_recibo.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1A5235')),
-                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#2D8A5E'))
-            ]))
-            
-            elementos.append(t_recibo)
-            elements.append(Spacer(1, 20))
-            
-            elements.append(Paragraph("__________________________________________             __________________________________________", normal))
-            elements.append(Paragraph(f"Firma Autorizada / Administración                               Recibido Conforme: <b>{medico_pago_sel}</b>", normal))
-            
-            doc_recibo.build(elementos)
-            buffer_recibo.seek(0)
-            
-            st.download_button(label="📥 Descargar Recibo con Firma (PDF)", data=buffer_recibo, file_name=f"recibo_pago_{id_med_sel}.pdf", mime="application/pdf", use_container_width=True)
+                buffer_recibo = io.BytesIO()
+                doc_recibo = SimpleDocTemplate(buffer_recibo, pagesize=landscape(letter), rightMargin=20, leftMargin=20, topMargin=25, bottomMargin=25)
+                elementos = []
+                styles = getSampleStyleSheet()
+                h1 = ParagraphStyle('H1', parent=styles['Heading1'], fontSize=12, textColor=colors.HexColor('#15432A'), spaceAfter=4)
+                normal = ParagraphStyle('Normal', parent=styles['Normal'], fontSize=8, textColor=colors.HexColor('#1F2926'), spaceAfter=3)
+                
+                elementos.append(Paragraph(f"<b>FARMAVIDA</b> - Comprobante de Pago de Honorarios Médicos", h1))
+                elementos.append(Paragraph(f"<b>Médico:</b> {medico_pago_sel} | <b>Fecha:</b> {date.today()}", normal))
+                elementos.append(Paragraph(f"<b>Moneda de Cancelación:</b> {moneda_entrega_medico}", normal))
+                elementos.append(Spacer(1, 5))
+                
+                data_tabla = [df_detalles.columns.tolist()] + df_detalles.astype(str).values.tolist()
+                data_tabla.append(["", "", "", "TOTALES:", f"${monto_usd:,.2f}", f"${monto_cop:,.2f}", f"Bs. {monto_ves:,.2f}"])
+                
+                t_recibo = Table(data_tabla)
+                t_recibo.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1A5235')),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                    ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#2D8A5E'))
+                ]))
+                
+                elementos.append(t_recibo)
+                elements.append(Spacer(1, 20))
+                
+                elements.append(Paragraph("__________________________________________             __________________________________________", normal))
+                elements.append(Paragraph(f"Firma Autorizada / Administración                               Recibido Conforme: <b>{medico_pago_sel}</b>", normal))
+                
+                doc_recibo.build(elementos)
+                buffer_recibo.seek(0)
+                
+                st.download_button(label="📥 Descargar Recibo con Firma (PDF)", data=buffer_recibo, file_name=f"recibo_pago_{id_med_sel}.pdf", mime="application/pdf", use_container_width=True)
     else:
-        st.info("🎉 ¡No hay dividendos pendientes!")
+        st.info("🎉 ¡No hay registros de pagos pendientes bajo este filtro!")
