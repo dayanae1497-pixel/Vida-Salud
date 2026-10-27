@@ -260,7 +260,7 @@ def generar_pdf_auditoria_master(df_citas_detalle, totales_dict):
     cell_style = ParagraphStyle('CellStyle', parent=styles['Normal'], fontSize=5.5, leading=7, textColor=colors.HexColor('#1F2926'), alignment=1)
     header_style = ParagraphStyle('HeaderStyle', parent=styles['Normal'], fontSize=6, leading=8, textColor=colors.whitesmoke, fontName='Helvetica-Bold', alignment=1)
     
-    elements.append(Paragraph(f"FARMAVIDA - INFORME COMPLETO DE AUDITORÍA Y BALANCE GENERAL", title_style))
+    elements.append(Paragraph(f"VIDACLINIC - INFORME COMPLETO DE AUDITORÍA Y BALANCE GENERAL", title_style))
     elements.append(Paragraph(f"<b>Fecha de Cierre:</b> {date.today()} | <b>Estado:</b> Consolidado Inmutable", subtitle_style))
     elements.append(Spacer(1, 4))
     
@@ -312,7 +312,7 @@ def generar_pdf_reporte(titulo, df):
     cell_style = ParagraphStyle('CellStyle', parent=styles['Normal'], fontSize=6.5, leading=8, textColor=colors.HexColor('#1F2926'), alignment=1)
     header_style = ParagraphStyle('HeaderStyle', parent=styles['Normal'], fontSize=7, leading=9, textColor=colors.whitesmoke, fontName='Helvetica-Bold', alignment=1)
     
-    elements.append(Paragraph(f"FARMAVIDA - {titulo}", title_style))
+    elements.append(Paragraph(f"VIDACLINIC - {titulo}", title_style))
     elements.append(Spacer(1, 5))
     
     headers = [Paragraph(str(col), header_style) for col in df.columns.tolist()]
@@ -380,7 +380,7 @@ if "logged_in" not in st.session_state:
     st.session_state.role = None
 
 if "nav_menu" not in st.session_state:
-    st.session_state.nav_menu = "🏠 Inicio (Portal Principal)"
+    st.session_state.nav_menu = "🏠 Inicio"
 
 # ==========================================
 # 1. PANTALLA DE LOGIN
@@ -435,9 +435,9 @@ st.sidebar.markdown(f"""
     <p style="font-weight: 800; font-size: 18px; margin-bottom: 10px; color: #FFFFFF !important;">Navegación:</p>
 """, unsafe_allow_html=True)
 
-menu_options = ["🏠 Inicio", "📋 Agendar Cita", "📅 Citas Agendadas", "📜 Historial y Citas Anteriores"]
+menu_options = ["🏠 Inicio", "📋 Agendar Cita", "📅 Citas Agendadas", "📜 Historial de Citas"]
 if st.session_state.role == 'Administrativo':
-    menu_options.append("📊 Panel Administrativo (Baremo / Balance)")
+    menu_options.append("📊 Blance General")
     menu_options.append("⚙️ Gestión de Baremo, Médicos y Equipos")
     menu_options.append("💰 Pago a Médicos")
 
@@ -765,7 +765,7 @@ elif selected_menu == "📅 Citas Agendadas":
 # ------------------------------------------
 # MÓDULO: HISTORIAL Y CITAS ANTERIORES
 # ------------------------------------------
-elif selected_menu == "📜 Historial y Citas Anteriores":
+elif selected_menu == "📜 Historial de Citas":
     st.markdown("<h1 style='color: #15432A !important; font-size: 32px; font-weight: 900;'>Historial de Citas y Citas Anteriores</h1>", unsafe_allow_html=True)
     
     tipo_busqueda = st.radio("Filtrar Historial por:", ["Por Paciente", "Por Doctor / Especialista", "Todas las Citas (Histórico General)"], horizontal=True)
@@ -849,7 +849,7 @@ elif selected_menu == "📜 Historial y Citas Anteriores":
 # ------------------------------------------
 # MÓDULO 4: PANEL ADMINISTRATIVO (BALANCE GENERAL)
 # ------------------------------------------
-elif selected_menu == "📊 Panel Administrativo (Baremo / Balance)" and st.session_state.role == 'Administrativo':
+elif selected_menu == "📊 Panel Administrativo" and st.session_state.role == 'Administrativo':
     st.markdown("<h1 style='color: #15432A !important; font-size: 32px; font-weight: 900;'>Panel Administrativo - Balance General Histórico</h1>", unsafe_allow_html=True)
 
     citas_query = """
@@ -922,14 +922,10 @@ elif selected_menu == "📊 Panel Administrativo (Baremo / Balance)" and st.sess
         # Generar el PDF con el detalle de las citas en lugar del baremo
         pdf_master_buffer = generar_pdf_auditoria_master(df_mostrar, totales_dict)
 
-        col_c1, col_c2 = st.columns(2)
+        col_c1, = st.columns(2)
         with col_c1:
             st.download_button(label="📄 Descargar PDF Balance Histórico Completo", data=pdf_master_buffer, file_name=f"balance_historico_{date.today()}.pdf", mime="application/pdf", use_container_width=True)
-        with col_c2:
-            if st.button("🔄 EFECTUAR CIERRE DE CICLO", use_container_width=True):
-                run_query("UPDATE cita_medica SET estado_pago = 'Pagado' WHERE estado_pago = 'Pendiente'", fetch=False)
-                st.success("¡Cierre completado con éxito!")
-                st.rerun()
+    
     else:
         st.info("🎉 ¡No hay operaciones registradas en el balance!")
 
@@ -968,7 +964,7 @@ elif selected_menu == "⚙️ Gestión de Baremo, Médicos y Equipos" and st.ses
                     st.error("Por favor complete todos los campos.")
 
         st.markdown("---")
-        st.subheader("Modificar Honorarios o Dar de Baja (Renuncia)")
+        st.subheader("Modificar o Borrar Honorarios")
         meds_existentes = run_query("SELECT m.id_medico, CONCAT(m.nombre, ' ', m.apellido, ' (', e.nombre_especialidad, ')') as medico_info, m.honorario_usd FROM medicos m JOIN especialidades e ON m.id_especialidad = e.id_especialidad")
         if meds_existentes:
             med_dict_mod = {m['medico_info']: m['id_medico'] for m in meds_existentes}
@@ -1110,7 +1106,7 @@ elif selected_menu == "💰 Pago a Médicos" and st.session_state.role == 'Admin
                 h1 = ParagraphStyle('H1', parent=styles['Heading1'], fontSize=12, textColor=colors.HexColor('#15432A'), spaceAfter=4)
                 normal = ParagraphStyle('Normal', parent=styles['Normal'], fontSize=8, textColor=colors.HexColor('#1F2926'), spaceAfter=3)
                 
-                elementos.append(Paragraph(f"<b>FARMAVIDA</b> - Comprobante de Pago de Honorarios Médicos", h1))
+                elementos.append(Paragraph(f"<b>VIDACLINIC</b> - Comprobante de Pago de Honorarios Médicos", h1))
                 elementos.append(Paragraph(f"<b>Médico:</b> {medico_pago_sel} | <b>Fecha:</b> {date.today()}", normal))
                 elementos.append(Paragraph(f"<b>Moneda de Cancelación:</b> {moneda_entrega_medico}", normal))
                 elementos.append(Spacer(1, 5))
@@ -1128,8 +1124,8 @@ elif selected_menu == "💰 Pago a Médicos" and st.session_state.role == 'Admin
                 elementos.append(t_recibo)
                 elementos.append(Spacer(1, 20))
                 
-                elementos.append(Paragraph("__________________________________________                                        __________________________________________", normal))
-                elementos.append(Paragraph(f"Firma Autorizada / Administración                                                Recibido Conforme: <b>{medico_pago_sel}</b>", normal))
+                elementos.append(Paragraph("__________________________________________ ", normal))
+                elementos.append(Paragraph(f"Recibido Conforme: <b>{medico_pago_sel}</b>", normal))
                 
                 doc_recibo.build(elementos)
                 buffer_recibo.seek(0)
