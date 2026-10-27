@@ -572,18 +572,11 @@ elif selected_menu == "📋 Agendar Cita":
         st.markdown("<p style='color: #15432A !important; font-weight: bold; margin:0;'>Seleccione Médico</p>", unsafe_allow_html=True)
         medico_sel = st.selectbox("Seleccione Médico", options=list(medico_dict.keys()), key="c_medico", label_visibility="collapsed")
 
-    horarios_list = run_query("""
-        SELECT h.id_horario, d.Descripción as dia, h.hora_inicio, h.hora_fin 
-        FROM horario h JOIN dias d ON h.id_dia = d.id_dia
-    """)
-    horario_dict = {f"{h['dia']} [{h['hora_inicio']} - {h['hora_fin']}]": h['id_horario'] for h in horarios_list}
-    with col_s2: 
-        st.markdown("<p style='color: #15432A !important; font-weight: bold; margin:0;'>Seleccione Horario</p>", unsafe_allow_html=True)
-        horario_sel = st.selectbox("Seleccione Horario", options=list(horario_dict.keys()), key="c_horario", label_visibility="collapsed")
-
+    id_med = medico_dict[medico_sel]
     equipo_sel_id = None
     consultorio_asignado_id = None
 
+    # --- DETERMINAR CONSULTORIO ASIGNADO ANTES DE CARGAR HORARIOS ---
     if tipo_servicio == "Examen Especializado":
         equipos_list = run_query("SELECT id_equipo, descripcion FROM equipo")
         equipo_dict = {eq['descripcion']: eq['id_equipo'] for eq in equipos_list}
@@ -591,19 +584,55 @@ elif selected_menu == "📋 Agendar Cita":
         equipo_sel_str = st.selectbox("Seleccione Equipo", options=list(equipo_dict.keys()), key="c_equipo_unico", label_visibility="collapsed")
         equipo_sel_id = equipo_dict[equipo_sel_str]
 
-        res_exam = run_query("SELECT id_consultorio FROM examen_esp WHERE id_equipo = %s", (equipo_sel_id,))
+        res_exam = run_query("SELECT id_consultorio FROM examen_esp WHERE id_equipo = %s LIMIT 1", (equipo_sel_id,))
         consultorio_asignado_id = res_exam[0]['id_consultorio'] if res_exam else 1
     else:
-        res_cons = run_query("SELECT id_consultorio FROM consulta_normal LIMIT 1")
+        res_cons = run_query("SELECT id_consultorio FROM consulta_normal WHERE id_equipo = %s LIMIT 1", (id_med,))
+        if not res_cons:
+            res_cons = run_query("SELECT id_consultorio FROM consulta_normal WHERE id_consulta = %s LIMIT 1", (id_med,))
         consultorio_asignado_id = res_cons[0]['id_consultorio'] if res_cons else 1
+
+    # --- FILTRAR HORARIOS DISPONIBLES (EXCLUYENDO OCUPADOS POR MÉDICO O CONSULTORIO) ---
+    citas_ocupadas_query = """
+        SELECT id_horario 
+        FROM cita_medica 
+        WHERE (id_medico = %s OR id_consultorio = %s) 
+          AND COALESCE(estado_cita, 'Pendiente') = 'Pendiente'
+    """
+    citas_ocupadas = run_query(citas_ocupadas_query, (id_med, consultorio_asignado_id))
+    ids_horarios_ocupados = [c['id_horario'] for c in citas_ocupadas] if citas_ocupadas else []
+
+    horarios_query = """
+        SELECT 
+            h.id_horario, 
+            d.Descripción as dia, 
+            CAST(h.hora_inicio AS CHAR) as hora_inicio, 
+            CAST(h.hora_fin AS CHAR) as hora_fin 
+        FROM horario h 
+        JOIN dias d ON h.id_dia = d.id_dia
+        ORDER BY d.id_dia, h.hora_inicio
+    """
+    todos_horarios = run_query(horarios_query)
+    horarios_disponibles = [h for h in todos_horarios if h['id_horario'] not in ids_horarios_ocupados] if todos_horarios else []
+
+    with col_s2: 
+        st.markdown("<p style='color: #15432A !important; font-weight: bold; margin:0;'>Seleccione Horario</p>", unsafe_allow_html=True)
+        if horarios_disponibles:
+            horario_dict = {f"{h['dia']} [{h['hora_inicio']} - {h['hora_fin']}]": h['id_horario'] for h in horarios_disponibles}
+            horario_sel = st.selectbox("Seleccione Horario", options=list(horario_dict.keys()), key="c_horario", label_visibility="collapsed")
+        else:
+            horario_dict = {}
+            st.warning("⚠️ No hay horarios disponibles para este médico o consultorio.")
+            horario_sel = None
 
     st.markdown("<br>", unsafe_allow_html=True)
     if st.button("CALCULAR TOTAL A PAGAR", use_container_width=True):
         if not nombre_p or not apellido_p:
             st.warning("Por favor ingrese el nombre y apellido del paciente.")
+        elif not horario_sel:
+            st.warning("No hay un horario válido seleccionado.")
         else:
             id_tasa_activo, tasa_actual = actualizar_tasa_bcv_automatico()
-            id_med = medico_dict[medico_sel]
             id_hor = horario_dict[horario_sel]
 
             m_data = run_query("SELECT honorario_usd FROM medicos WHERE id_medico = %s", (id_med,))[0]
@@ -688,7 +717,6 @@ elif selected_menu == "📋 Agendar Cita":
                         st.session_state.calculated_cita = None
                         st.session_state.force_nav = "🏠 Inicio"
                         st.rerun()
-
 # ------------------------------------------
 # MÓDULO 3: CITAS AGENDADAS
 # ------------------------------------------
