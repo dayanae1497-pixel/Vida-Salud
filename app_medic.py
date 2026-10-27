@@ -232,7 +232,7 @@ def asegurar_columnas_sistema():
 
 asegurar_columnas_sistema()
 
-# --- TABLA DE HISTORIAL DE PAGOS A MÉDICOS (SI NO EXISTE) ---
+# --- TABLA DE HISTORIAL DE PAGOS A MÉDICOS ---
 def asegurar_tabla_pagos_medicos():
     query_create = """
         CREATE TABLE IF NOT EXISTS pago_medico_historial (
@@ -248,27 +248,27 @@ def asegurar_tabla_pagos_medicos():
 
 asegurar_tabla_pagos_medicos()
 
-# --- FUNCIONES DE PDF CON FIRMA Y FORMATO ---
-def generar_pdf_auditoria_master(df_citas, df_dividendos, df_infraestructura, totales_dict):
+# --- FUNCIONES DE PDF CON DETALLE DE MOVIMIENTOS Y FIRMA ---
+def generar_pdf_auditoria_master(df_citas_detalle, totales_dict):
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=landscape(letter), rightMargin=15, leftMargin=15, topMargin=20, bottomMargin=20)
     elements = []
     
     styles = getSampleStyleSheet()
     title_style = ParagraphStyle('TitleStyle', parent=styles['Heading1'], fontSize=12, textColor=colors.HexColor('#15432A'), spaceAfter=4)
-    subtitle_style = ParagraphStyle('SubTitleStyle', parent=styles['Heading2'], fontSize=8.5, textColor=colors.HexColor('#2D8A5E'), spaceAfter=5)
-    cell_style = ParagraphStyle('CellStyle', parent=styles['Normal'], fontSize=6, leading=7, textColor=colors.HexColor('#1F2926'), alignment=1)
-    header_style = ParagraphStyle('HeaderStyle', parent=styles['Normal'], fontSize=6.5, leading=8, textColor=colors.whitesmoke, fontName='Helvetica-Bold', alignment=1)
+    subtitle_style = ParagraphStyle('SubTitleStyle', parent=styles['Heading2'], fontSize=8.5, textColor=colors.HexColor('#2D8A5E'], spaceAfter=5)
+    cell_style = ParagraphStyle('CellStyle', parent=styles['Normal'], fontSize=5.5, leading=7, textColor=colors.HexColor('#1F2926'), alignment=1)
+    header_style = ParagraphStyle('HeaderStyle', parent=styles['Normal'], fontSize=6, leading=8, textColor=colors.whitesmoke, fontName='Helvetica-Bold', alignment=1)
     
-    elements.append(Paragraph(f"FARMAVIDA - INFORME COMPLETO DE AUDITORÍA Y CIERRE DE CICLO", title_style))
+    elements.append(Paragraph(f"FARMAVIDA - INFORME COMPLETO DE AUDITORÍA Y BALANCE GENERAL", title_style))
     elements.append(Paragraph(f"<b>Fecha de Cierre:</b> {date.today()} | <b>Estado:</b> Consolidado Inmutable", subtitle_style))
     elements.append(Spacer(1, 4))
     
     resumen_data = [
         [Paragraph("Concepto / Moneda", header_style), Paragraph("Total USD", header_style), Paragraph("Total COP", header_style), Paragraph("Total VES", header_style)],
         [Paragraph("Balance Histórico General", cell_style), Paragraph(f"${totales_dict['usd']:,.2f}", cell_style), Paragraph(f"${totales_dict['cop']:,.2f}", cell_style), Paragraph(f"Bs. {totales_dict['ves']:,.2f}", cell_style)],
-        [Paragraph("Ingresos Clínica (Consultorios + Equipos)", cell_style), Paragraph(f"${totales_dict['clinica_usd']:,.2f}", cell_style), Paragraph(f"${totales_dict['clinica_cop']:,.2f}", cell_style), Paragraph("-", cell_style)],
-        [Paragraph("Honorarios Médicos (Egresos)", cell_style), Paragraph(f"${totales_dict['medicos_usd']:,.2f}", cell_style), Paragraph(f"${totales_dict['medicos_cop']:,.2f}", cell_style), Paragraph("-", cell_style)]
+        [Paragraph("Ingresos Netos Clínica (Consultorios + Equipos)", cell_style), Paragraph(f"${totales_dict['clinica_usd']:,.2f}", cell_style), Paragraph(f"${totales_dict['clinica_cop']:,.2f}", cell_style), Paragraph("-", cell_style)],
+        [Paragraph("Egresos (Honorarios Médicos)", cell_style), Paragraph(f"${totales_dict['medicos_usd']:,.2f}", cell_style), Paragraph(f"${totales_dict['medicos_cop']:,.2f}", cell_style), Paragraph("-", cell_style)]
     ]
     t_resumen = Table(resumen_data, colWidths=[220, 180, 180, 182])
     t_resumen.setStyle(TableStyle([
@@ -278,13 +278,15 @@ def generar_pdf_auditoria_master(df_citas, df_dividendos, df_infraestructura, to
     ]))
     elements.append(t_resumen)
     elements.append(Spacer(1, 10))
+    elements.append(Paragraph("<b>Detalle Histórico de Movimientos y Origen de Precios por Cita:</b>", subtitle_style))
 
-    if not df_infraestructura.empty:
-        headers_inf = [Paragraph(str(col), header_style) for col in df_infraestructura.columns.tolist()]
+    if not df_citas_detalle.empty:
+        headers_inf = [Paragraph(str(col), header_style) for col in df_citas_detalle.columns.tolist()]
         data_inf = [headers_inf]
-        for row in df_infraestructura.astype(str).values.tolist():
+        for row in df_citas_detalle.astype(str).values.tolist():
             data_inf.append([Paragraph(cell, cell_style) for cell in row])
-        t_inf = Table(data_inf, colWidths=[762 / len(df_infraestructura.columns)] * len(df_infraestructura.columns))
+        
+        t_inf = Table(data_inf, colWidths=[762 / len(df_citas_detalle.columns)] * len(df_citas_detalle.columns))
         t_inf.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1A5235')),
             ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#2D8A5E')),
@@ -572,11 +574,18 @@ elif selected_menu == "📋 Agendar Cita":
         st.markdown("<p style='color: #15432A !important; font-weight: bold; margin:0;'>Seleccione Médico</p>", unsafe_allow_html=True)
         medico_sel = st.selectbox("Seleccione Médico", options=list(medico_dict.keys()), key="c_medico", label_visibility="collapsed")
 
-    id_med = medico_dict[medico_sel]
+    horarios_list = run_query("""
+        SELECT h.id_horario, d.Descripción as dia, h.hora_inicio, h.hora_fin 
+        FROM horario h JOIN dias d ON h.id_dia = d.id_dia
+    """)
+    horario_dict = {f"{h['dia']} [{h['hora_inicio']} - {h['hora_fin']}]": h['id_horario'] for h in horarios_list}
+    with col_s2: 
+        st.markdown("<p style='color: #15432A !important; font-weight: bold; margin:0;'>Seleccione Horario</p>", unsafe_allow_html=True)
+        horario_sel = st.selectbox("Seleccione Horario", options=list(horario_dict.keys()), key="c_horario", label_visibility="collapsed")
+
     equipo_sel_id = None
     consultorio_asignado_id = None
 
-    # --- DETERMINAR CONSULTORIO ASIGNADO ANTES DE CARGAR HORARIOS ---
     if tipo_servicio == "Examen Especializado":
         equipos_list = run_query("SELECT id_equipo, descripcion FROM equipo")
         equipo_dict = {eq['descripcion']: eq['id_equipo'] for eq in equipos_list}
@@ -584,55 +593,19 @@ elif selected_menu == "📋 Agendar Cita":
         equipo_sel_str = st.selectbox("Seleccione Equipo", options=list(equipo_dict.keys()), key="c_equipo_unico", label_visibility="collapsed")
         equipo_sel_id = equipo_dict[equipo_sel_str]
 
-        res_exam = run_query("SELECT id_consultorio FROM examen_esp WHERE id_equipo = %s LIMIT 1", (equipo_sel_id,))
+        res_exam = run_query("SELECT id_consultorio FROM examen_esp WHERE id_equipo = %s", (equipo_sel_id,))
         consultorio_asignado_id = res_exam[0]['id_consultorio'] if res_exam else 1
     else:
-        res_cons = run_query("SELECT id_consultorio FROM consulta_normal WHERE id_equipo = %s LIMIT 1", (id_med,))
-        if not res_cons:
-            res_cons = run_query("SELECT id_consultorio FROM consulta_normal WHERE id_consulta = %s LIMIT 1", (id_med,))
+        res_cons = run_query("SELECT id_consultorio FROM consulta_normal LIMIT 1")
         consultorio_asignado_id = res_cons[0]['id_consultorio'] if res_cons else 1
-
-    # --- FILTRAR HORARIOS DISPONIBLES (EXCLUYENDO OCUPADOS POR MÉDICO O CONSULTORIO) ---
-    citas_ocupadas_query = """
-        SELECT id_horario 
-        FROM cita_medica 
-        WHERE (id_medico = %s OR id_consultorio = %s) 
-          AND COALESCE(estado_cita, 'Pendiente') = 'Pendiente'
-    """
-    citas_ocupadas = run_query(citas_ocupadas_query, (id_med, consultorio_asignado_id))
-    ids_horarios_ocupados = [c['id_horario'] for c in citas_ocupadas] if citas_ocupadas else []
-
-    horarios_query = """
-        SELECT 
-            h.id_horario, 
-            d.Descripción as dia, 
-            CAST(h.hora_inicio AS CHAR) as hora_inicio, 
-            CAST(h.hora_fin AS CHAR) as hora_fin 
-        FROM horario h 
-        JOIN dias d ON h.id_dia = d.id_dia
-        ORDER BY d.id_dia, h.hora_inicio
-    """
-    todos_horarios = run_query(horarios_query)
-    horarios_disponibles = [h for h in todos_horarios if h['id_horario'] not in ids_horarios_ocupados] if todos_horarios else []
-
-    with col_s2: 
-        st.markdown("<p style='color: #15432A !important; font-weight: bold; margin:0;'>Seleccione Horario</p>", unsafe_allow_html=True)
-        if horarios_disponibles:
-            horario_dict = {f"{h['dia']} [{h['hora_inicio']} - {h['hora_fin']}]": h['id_horario'] for h in horarios_disponibles}
-            horario_sel = st.selectbox("Seleccione Horario", options=list(horario_dict.keys()), key="c_horario", label_visibility="collapsed")
-        else:
-            horario_dict = {}
-            st.warning("⚠️ No hay horarios disponibles para este médico o consultorio.")
-            horario_sel = None
 
     st.markdown("<br>", unsafe_allow_html=True)
     if st.button("CALCULAR TOTAL A PAGAR", use_container_width=True):
         if not nombre_p or not apellido_p:
             st.warning("Por favor ingrese el nombre y apellido del paciente.")
-        elif not horario_sel:
-            st.warning("No hay un horario válido seleccionado.")
         else:
             id_tasa_activo, tasa_actual = actualizar_tasa_bcv_automatico()
+            id_med = medico_dict[medico_sel]
             id_hor = horario_dict[horario_sel]
 
             m_data = run_query("SELECT honorario_usd FROM medicos WHERE id_medico = %s", (id_med,))[0]
@@ -717,6 +690,7 @@ elif selected_menu == "📋 Agendar Cita":
                         st.session_state.calculated_cita = None
                         st.session_state.force_nav = "🏠 Inicio"
                         st.rerun()
+
 # ------------------------------------------
 # MÓDULO 3: CITAS AGENDADAS
 # ------------------------------------------
@@ -937,12 +911,6 @@ elif selected_menu == "📊 Panel Administrativo (Baremo / Balance)" and st.sess
         with col_ba2: st.metric("Ingresos Netos Clínica", f"${total_ingresos_clinica_usd:,.2f} USD")
         with col_ba3: st.metric("Egresos Honorarios Médicos", f"${total_egresos_medicos_usd:,.2f} USD")
 
-        infra_query = "SELECT descripcion as 'Descripción / Infraestructura', costo_usd as 'Costo USD', (costo_usd * 3100.0) as 'Costo COP' FROM consultorio UNION SELECT descripcion as 'Descripción / Infraestructura', costo_usd as 'Costo USD', (costo_usd * 3100.0) as 'Costo COP' FROM equipo"
-        df_infraestructura = pd.DataFrame(run_query(infra_query))
-
-        med_div_query = "SELECT m.id_medico as 'ID', CONCAT(m.nombre, ' ', m.apellido) as 'Médico', COUNT(cm.id_cita) as 'Citas', SUM(COALESCE(NULLIF(cm.total_honorario_usd, 0), m.honorario_usd)) as 'Hon. USD', SUM(COALESCE(NULLIF(cm.total_honorario_cop, 0), m.honorario_usd * 3100.0)) as 'Hon. COP' FROM medicos m JOIN cita_medica cm ON m.id_medico = cm.id_medico GROUP BY m.id_medico"
-        df_div_cierre = pd.DataFrame(run_query(med_div_query))
-
         totales_dict = {
             "usd": total_usd_real, "cop": total_cop_real, "ves": total_ves_real,
             "clinica_usd": total_ingresos_clinica_usd,
@@ -951,7 +919,8 @@ elif selected_menu == "📊 Panel Administrativo (Baremo / Balance)" and st.sess
             "medicos_cop": float(df_citas['honorarios_medicos_cop'].sum())
         }
 
-        pdf_master_buffer = generar_pdf_auditoria_master(df_mostrar, df_div_cierre, df_infraestructura, totales_dict)
+        # Generar el PDF con el detalle de las citas en lugar del baremo
+        pdf_master_buffer = generar_pdf_auditoria_master(df_mostrar, totales_dict)
 
         col_c1, col_c2 = st.columns(2)
         with col_c1:
@@ -1083,7 +1052,7 @@ elif selected_menu == "⚙️ Gestión de Baremo, Médicos y Equipos" and st.ses
                 st.rerun()
 
 # ------------------------------------------
-# MÓDULO 6: PAGO A MÉDICOS (HISTORIAL DE PAGOS Y DESCARGA)
+# MÓDULO 6: PAGO A MÉDICOS
 # ------------------------------------------
 elif selected_menu == "💰 Pago a Médicos" and st.session_state.role == 'Administrativo':
     st.markdown("<h1 style='color: #15432A !important; font-size: 32px; font-weight: 900;'>Pago a Médicos e Historial de Liquidaciones</h1>", unsafe_allow_html=True)
@@ -1124,10 +1093,8 @@ elif selected_menu == "💰 Pago a Médicos" and st.session_state.role == 'Admin
                 citas_detalle_query = "SELECT cm.id_cita as ID, CONCAT(p.nombre, ' ', p.apellido) as Paciente, co.descripcion as Consultorio, CONCAT(d.Descripción, ' (', h.hora_inicio, ')') as Horario, COALESCE(NULLIF(cm.total_honorario_usd, 0), m.honorario_usd) as Hon_USD, COALESCE(NULLIF(cm.total_honorario_cop, 0), m.honorario_usd * 3100.0) as Hon_COP, cm.costo_total_ves as Hon_VES FROM cita_medica cm JOIN paciente p ON cm.id_paciente = p.id_paciente JOIN medicos m ON cm.id_medico = m.id_medico JOIN consultorio co ON cm.id_consultorio = co.id_consultorio JOIN horario h ON cm.id_horario = h.id_horario JOIN dias d ON h.id_dia = d.id_dia WHERE cm.id_medico = %s AND cm.estado_pago = 'Pendiente'"
                 df_detalles = pd.DataFrame(run_query(citas_detalle_query, (id_med_sel,)))
                 
-                # Marcar como pagado
                 run_query("UPDATE cita_medica SET estado_pago = 'Pagado' WHERE id_medico = %s AND estado_pago = 'Pendiente'", (id_med_sel,), fetch=False)
                 
-                # Registrar en el historial de pagos
                 monto_a_guardar = monto_usd if moneda_entrega_medico == "Dólares (USD)" else (monto_cop if moneda_entrega_medico == "Pesos Colombianos (COP)" else monto_ves)
                 run_query(
                     "INSERT INTO pago_medico_historial (id_medico, fecha_pago, total_citas, monto_pagado, moneda) VALUES (%s, %s, %s, %s, %s)",
