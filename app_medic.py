@@ -849,7 +849,7 @@ elif selected_menu == "📜 Historial de Citas":
 # ------------------------------------------
 # MÓDULO 4: PANEL ADMINISTRATIVO (BALANCE GENERAL)
 # ------------------------------------------
-elif selected_menu == "📊 Panel Administrativo" and st.session_state.role == 'Administrativo':
+elif selected_menu == "📊 Balance General" and st.session_state.role == 'Administrativo':
     st.markdown("<h1 style='color: #15432A !important; font-size: 32px; font-weight: 900;'>Panel Administrativo - Balance General Histórico</h1>", unsafe_allow_html=True)
 
     citas_query = """
