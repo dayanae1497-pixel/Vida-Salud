@@ -256,7 +256,7 @@ def generar_pdf_auditoria_master(df_citas_detalle, totales_dict):
     
     styles = getSampleStyleSheet()
     title_style = ParagraphStyle('TitleStyle', parent=styles['Heading1'], fontSize=12, textColor=colors.HexColor('#15432A'), spaceAfter=4)
-    subtitle_style = ParagraphStyle('SubTitleStyle', parent=styles['Heading2'], fontSize=8.5, textColor=colors.HexColor('#2D8A5E'], spaceAfter=5)
+    subtitle_style = ParagraphStyle('SubTitleStyle', parent=styles['Heading2'], fontSize=8.5, textColor=colors.HexColor('#2D8A5E'), spaceAfter=5)
     cell_style = ParagraphStyle('CellStyle', parent=styles['Normal'], fontSize=5.5, leading=7, textColor=colors.HexColor('#1F2926'), alignment=1)
     header_style = ParagraphStyle('HeaderStyle', parent=styles['Normal'], fontSize=6, leading=8, textColor=colors.whitesmoke, fontName='Helvetica-Bold', alignment=1)
     
